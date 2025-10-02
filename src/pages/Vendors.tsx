@@ -28,6 +28,8 @@ export default function Vendors() {
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     license_number: "",
@@ -76,6 +78,55 @@ export default function Vendors() {
       });
 
       setIsAddDialogOpen(false);
+      setFormData({
+        name: "",
+        license_number: "",
+        contact_person: "",
+        phone: "",
+        email: "",
+        address: "",
+      });
+      fetchVendors();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditVendor = (vendor: Vendor) => {
+    setEditingVendor(vendor);
+    setFormData({
+      name: vendor.name,
+      license_number: vendor.license_number || "",
+      contact_person: vendor.contact_person || "",
+      phone: vendor.phone || "",
+      email: vendor.email || "",
+      address: vendor.address || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateVendor = async () => {
+    if (!editingVendor) return;
+
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .update(formData)
+        .eq('id', editingVendor.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Vendor updated successfully",
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingVendor(null);
       setFormData({
         name: "",
         license_number: "",
@@ -205,6 +256,76 @@ export default function Vendors() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Vendor</DialogTitle>
+              <DialogDescription>Update vendor information</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <div>
+                <Label htmlFor="edit-name">Vendor Name *</Label>
+                <Input
+                  id="edit-name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter vendor name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-license_number">License Number</Label>
+                <Input
+                  id="edit-license_number"
+                  value={formData.license_number}
+                  onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
+                  placeholder="License #"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-contact_person">Contact Person</Label>
+                <Input
+                  id="edit-contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                  placeholder="Contact name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-phone">Phone</Label>
+                <Input
+                  id="edit-phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(555) 123-4567"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-email">Email</Label>
+                <Input
+                  id="edit-email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="contact@vendor.com"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-address">Address</Label>
+                <Input
+                  id="edit-address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Full address"
+                />
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleUpdateVendor}>Update Vendor</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Summary Stats */}
@@ -316,7 +437,11 @@ export default function Vendors() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditVendor(vendor)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
