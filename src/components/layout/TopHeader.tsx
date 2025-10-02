@@ -1,14 +1,12 @@
-import { useState } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Settings, User, LogOut } from "lucide-react";
+import { Bell, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { ClinicSelector } from "@/components/ClinicSelector";
 
 export function TopHeader() {
-  const [selectedClinic, setSelectedClinic] = useState("clinic-1");
   const notifications = 3;
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
@@ -17,14 +15,6 @@ export function TopHeader() {
     await signOut();
     navigate('/auth');
   };
-
-  const clinics = [
-    { id: "clinic-1", name: "Downtown Medical Center", patients: 1247 },
-    { id: "clinic-2", name: "Westside Cannabis Clinic", patients: 892 },
-    { id: "clinic-3", name: "Northpoint Wellness", patients: 656 },
-    { id: "clinic-4", name: "Riverside Medical", patients: 423 },
-    { id: "clinic-5", name: "Central Health Center", patients: 334 },
-  ];
 
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
@@ -38,25 +28,7 @@ export function TopHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        {/* Clinic Selector */}
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Active Clinic:</span>
-          <Select value={selectedClinic} onValueChange={setSelectedClinic}>
-            <SelectTrigger className="w-64">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {clinics.map((clinic) => (
-                <SelectItem key={clinic.id} value={clinic.id}>
-                  <div className="flex justify-between items-center w-full">
-                    <span>{clinic.name}</span>
-                    <Badge variant="outline" className="ml-2">{clinic.patients} patients</Badge>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <ClinicSelector />
 
         {/* Header Actions */}
         <div className="flex items-center gap-2">

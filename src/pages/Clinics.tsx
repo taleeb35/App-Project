@@ -3,57 +3,53 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Store, FileText, Users, DollarSign, Edit, Trash2 } from "lucide-react";
+import { Plus, Building2, Edit, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
-type Vendor = {
+type Clinic = {
   id: string;
   name: string;
   license_number: string | null;
-  contact_person: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
-  status: string | null;
-  clinic_id: string | null;
   created_at: string;
 };
 
-export default function Vendors() {
+export default function Clinics() {
   const { toast } = useToast();
-  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     license_number: "",
-    contact_person: "",
     phone: "",
     email: "",
     address: "",
   });
 
   useEffect(() => {
-    fetchVendors();
+    fetchClinics();
   }, []);
 
-  const fetchVendors = async () => {
+  const fetchClinics = async () => {
     try {
       const { data, error } = await supabase
-        .from('vendors')
+        .from('clinics')
         .select('*')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setVendors(data || []);
+      setClinics(data || []);
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to fetch vendors",
+        description: "Failed to fetch clinics",
         variant: "destructive",
       });
     } finally {
@@ -61,30 +57,35 @@ export default function Vendors() {
     }
   };
 
-  const handleAddVendor = async () => {
-    try {
-      const { error } = await supabase.from('vendors').insert({
-        ...formData,
-        status: 'active',
+  const handleAddClinic = async () => {
+    if (!formData.name) {
+      toast({
+        title: "Error",
+        description: "Clinic name is required",
+        variant: "destructive",
       });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from('clinics').insert(formData);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Vendor added successfully",
+        description: "Clinic added successfully",
       });
 
       setIsAddDialogOpen(false);
       setFormData({
         name: "",
         license_number: "",
-        contact_person: "",
         phone: "",
         email: "",
         address: "",
       });
-      fetchVendors();
+      fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -94,12 +95,12 @@ export default function Vendors() {
     }
   };
 
-  const handleDeleteVendor = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this vendor?")) return;
+  const handleDeleteClinic = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this clinic? This will affect associated vendors and patients.")) return;
 
     try {
       const { error } = await supabase
-        .from('vendors')
+        .from('clinics')
         .delete()
         .eq('id', id);
 
@@ -107,9 +108,9 @@ export default function Vendors() {
 
       toast({
         title: "Success",
-        description: "Vendor deleted successfully",
+        description: "Clinic deleted successfully",
       });
-      fetchVendors();
+      fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -119,37 +120,34 @@ export default function Vendors() {
     }
   };
 
-  const activeVendors = vendors.filter(v => v.status === 'active').length;
-
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Vendor Management</h1>
-          <p className="text-muted-foreground">Manage producers, dispensaries, and pharmacies</p>
+          <h1 className="text-3xl font-bold text-foreground">Clinic Management</h1>
+          <p className="text-muted-foreground">Manage multiple clinic locations</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Add New Vendor
+              Add New Clinic
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Vendor</DialogTitle>
-              <DialogDescription>Add a new producer, dispensary, or pharmacy to the system</DialogDescription>
+              <DialogTitle>Add New Clinic</DialogTitle>
+              <DialogDescription>Add a new clinic location to the system</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div>
-                <Label htmlFor="name">Vendor Name *</Label>
+                <Label htmlFor="name">Clinic Name *</Label>
                 <Input
                   id="name"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter vendor name"
+                  placeholder="Enter clinic name"
                 />
               </div>
               <div>
@@ -159,15 +157,6 @@ export default function Vendors() {
                   value={formData.license_number}
                   onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
                   placeholder="License #"
-                />
-              </div>
-              <div>
-                <Label htmlFor="contact_person">Contact Person</Label>
-                <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
-                  placeholder="Contact name"
                 />
               </div>
               <div>
@@ -186,7 +175,7 @@ export default function Vendors() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="contact@vendor.com"
+                  placeholder="contact@clinic.com"
                 />
               </div>
               <div>
@@ -201,67 +190,19 @@ export default function Vendors() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddVendor}>Add Vendor</Button>
+              <Button onClick={handleAddClinic}>Add Clinic</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Vendors</CardTitle>
-            <Store className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{vendors.length}</div>
-            <p className="text-xs text-muted-foreground">{activeVendors} active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Status</CardTitle>
-            <Badge className="h-4 w-4 text-success" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{activeVendors}</div>
-            <p className="text-xs text-muted-foreground">Currently active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Inactive</CardTitle>
-            <Badge className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{vendors.length - activeVendors}</div>
-            <p className="text-xs text-muted-foreground">Not active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Licensed</CardTitle>
-            <FileText className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{vendors.filter(v => v.license_number).length}</div>
-            <p className="text-xs text-muted-foreground">With license #</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Vendors Table */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Store className="h-5 w-5 text-primary" />
-            All Vendors
+            <Building2 className="h-5 w-5 text-primary" />
+            All Clinics
           </CardTitle>
-          <CardDescription>Comprehensive list of all registered vendors</CardDescription>
+          <CardDescription>Total: {clinics.length} clinic(s)</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -272,47 +213,38 @@ export default function Vendors() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Vendor Name</TableHead>
+                  <TableHead>Clinic Name</TableHead>
                   <TableHead>License #</TableHead>
-                  <TableHead>Contact Person</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Address</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {vendors.length === 0 ? (
+                {clinics.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No vendors found
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      No clinics found. Add your first clinic to get started.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  vendors.map((vendor) => (
-                    <TableRow key={vendor.id}>
+                  clinics.map((clinic) => (
+                    <TableRow key={clinic.id}>
                       <TableCell>
-                        <p className="font-medium text-foreground">{vendor.name}</p>
+                        <p className="font-medium text-foreground">{clinic.name}</p>
                       </TableCell>
                       <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{vendor.license_number || 'N/A'}</code>
+                        <code className="text-sm bg-muted px-2 py-1 rounded">{clinic.license_number || 'N/A'}</code>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{vendor.contact_person || 'N/A'}</p>
+                        <p className="text-sm">{clinic.phone || 'N/A'}</p>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{vendor.phone || 'N/A'}</p>
+                        <p className="text-sm">{clinic.email || 'N/A'}</p>
                       </TableCell>
                       <TableCell>
-                        <p className="text-sm">{vendor.email || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={vendor.status === 'active' ? 'default' : 'secondary'}
-                          className={vendor.status === 'active' ? 'bg-success text-success-foreground' : ''}
-                        >
-                          {vendor.status || 'unknown'}
-                        </Badge>
+                        <p className="text-sm">{clinic.address || 'N/A'}</p>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -323,7 +255,7 @@ export default function Vendors() {
                             variant="ghost" 
                             size="sm" 
                             className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteVendor(vendor.id)}
+                            onClick={() => handleDeleteClinic(clinic.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

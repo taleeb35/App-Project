@@ -152,6 +152,7 @@ export type Database = {
           preferred_vendor_id: string | null
           status: string | null
           updated_at: string | null
+          vendor_id: string | null
         }
         Insert: {
           address?: string | null
@@ -168,6 +169,7 @@ export type Database = {
           preferred_vendor_id?: string | null
           status?: string | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Update: {
           address?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           preferred_vendor_id?: string | null
           status?: string | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -196,6 +199,13 @@ export type Database = {
           {
             foreignKeyName: "patients_preferred_vendor_id_fkey"
             columns: ["preferred_vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patients_vendor_id_fkey"
+            columns: ["vendor_id"]
             isOneToOne: false
             referencedRelation: "vendors"
             referencedColumns: ["id"]
@@ -261,6 +271,7 @@ export type Database = {
       vendors: {
         Row: {
           address: string | null
+          clinic_id: string | null
           contact_person: string | null
           created_at: string | null
           email: string | null
@@ -273,6 +284,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          clinic_id?: string | null
           contact_person?: string | null
           created_at?: string | null
           email?: string | null
@@ -285,6 +297,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          clinic_id?: string | null
           contact_person?: string | null
           created_at?: string | null
           email?: string | null
@@ -295,7 +308,15 @@ export type Database = {
           status?: string | null
           updated_at?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "vendors_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

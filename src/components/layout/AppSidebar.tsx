@@ -47,9 +47,10 @@ const navigationItems = [
     ]
   },
   {
-    title: "Vendors & Producers",
+    title: "Vendors & Clinics",
     items: [
       { title: "Manage Vendors", url: "/vendors", icon: Store },
+      { title: "Manage Clinics", url: "/clinics", icon: Building2 },
       { title: "Vendor Reports", url: "/vendors/reports", icon: FileText },
     ]
   },
