@@ -1,69 +1,124 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Store, FileText, Users, DollarSign, Edit, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+type Vendor = {
+  id: string;
+  name: string;
+  license_number: string | null;
+  contact_person: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  status: string | null;
+  created_at: string;
+};
 
 export default function Vendors() {
-  const [vendors, setVendors] = useState([
-    {
-      id: 1,
-      name: "Green Valley Producers",
-      type: "Cannabis Producer",
-      contactPerson: "Mike Johnson",
-      phone: "(555) 123-4567",
-      email: "mike@greenvalley.com",
-      patients: 324,
-      monthlyRevenue: 125420.50,
-      status: "Active",
-      lastReport: "2024-11-15",
-    },
-    {
-      id: 2,
-      name: "Westside Cannabis Clinic",
-      type: "Producer/Dispensary",
-      contactPerson: "Sarah Wilson",
-      phone: "(555) 234-5678", 
-      email: "sarah@westside.com",
-      patients: 198,
-      monthlyRevenue: 78650.25,
-      status: "Active",
-      lastReport: "2024-11-14",
-    },
-    {
-      id: 3,
-      name: "Central Pharmacy",
-      type: "Pharmacy",
-      contactPerson: "Dr. James Brown",
-      phone: "(555) 345-6789",
-      email: "jbrown@centralpharm.com",
-      patients: 89,
-      monthlyRevenue: 15230.75,
-      status: "Active",
-      lastReport: "2024-11-15",
-    },
-    {
-      id: 4,
-      name: "Mountain View Cannabis",
-      type: "Cannabis Producer",
-      contactPerson: "Lisa Davis",
-      phone: "(555) 456-7890",
-      email: "lisa@mountainview.com",
-      patients: 156,
-      monthlyRevenue: 65420.00,
-      status: "Pending",
-      lastReport: "2024-11-10",
-    },
-  ]);
+  const { toast } = useToast();
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    license_number: "",
+    contact_person: "",
+    phone: "",
+    email: "",
+    address: "",
+  });
 
-  const totalVendors = vendors.length;
-  const activeVendors = vendors.filter(v => v.status === 'Active').length;
-  const totalPatients = vendors.reduce((sum, v) => sum + v.patients, 0);
-  const totalRevenue = vendors.reduce((sum, v) => sum + v.monthlyRevenue, 0);
+  useEffect(() => {
+    fetchVendors();
+  }, []);
+
+  const fetchVendors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setVendors(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch vendors",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddVendor = async () => {
+    try {
+      const { error } = await supabase.from('vendors').insert({
+        ...formData,
+        status: 'active',
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Vendor added successfully",
+      });
+
+      setIsAddDialogOpen(false);
+      setFormData({
+        name: "",
+        license_number: "",
+        contact_person: "",
+        phone: "",
+        email: "",
+        address: "",
+      });
+      fetchVendors();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteVendor = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this vendor?")) return;
+
+    try {
+      const { error } = await supabase
+        .from('vendors')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Vendor deleted successfully",
+      });
+      fetchVendors();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const activeVendors = vendors.filter(v => v.status === 'active').length;
 
   return (
     <div className="space-y-6">
@@ -74,7 +129,7 @@ export default function Vendors() {
           <p className="text-muted-foreground">Manage producers, dispensaries, and pharmacies</p>
         </div>
         
-        <Dialog>
+        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -87,35 +142,66 @@ export default function Vendors() {
               <DialogDescription>Add a new producer, dispensary, or pharmacy to the system</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="vendorName">Vendor Name</Label>
-                  <Input id="vendorName" placeholder="Enter vendor name" />
-                </div>
-                <div>
-                  <Label htmlFor="vendorType">Type</Label>
-                  <Input id="vendorType" placeholder="Producer/Pharmacy" />
-                </div>
+              <div>
+                <Label htmlFor="name">Vendor Name *</Label>
+                <Input
+                  id="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  placeholder="Enter vendor name"
+                />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="contactPerson">Contact Person</Label>
-                  <Input id="contactPerson" placeholder="Contact name" />
-                </div>
-                <div>
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="(555) 123-4567" />
-                </div>
+              <div>
+                <Label htmlFor="license_number">License Number</Label>
+                <Input
+                  id="license_number"
+                  value={formData.license_number}
+                  onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
+                  placeholder="License #"
+                />
+              </div>
+              <div>
+                <Label htmlFor="contact_person">Contact Person</Label>
+                <Input
+                  id="contact_person"
+                  value={formData.contact_person}
+                  onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                  placeholder="Contact name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="phone">Phone</Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  placeholder="(555) 123-4567"
+                />
               </div>
               <div>
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="contact@vendor.com" />
+                <Input
+                  id="email"
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="contact@vendor.com"
+                />
               </div>
-              <div className="flex justify-end gap-2 pt-4">
-                <Button variant="outline">Cancel</Button>
-                <Button>Add Vendor</Button>
+              <div>
+                <Label htmlFor="address">Address</Label>
+                <Input
+                  id="address"
+                  value={formData.address}
+                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                  placeholder="Full address"
+                />
               </div>
             </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddVendor}>Add Vendor</Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
@@ -128,41 +214,41 @@ export default function Vendors() {
             <Store className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalVendors}</div>
+            <div className="text-2xl font-bold text-foreground">{vendors.length}</div>
             <p className="text-xs text-muted-foreground">{activeVendors} active</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
-            <Users className="h-4 w-4 text-accent" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Active Status</CardTitle>
+            <Badge className="h-4 w-4 text-success" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">{totalPatients.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Across all vendors</p>
+            <div className="text-2xl font-bold text-foreground">{activeVendors}</div>
+            <p className="text-xs text-muted-foreground">Currently active</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Monthly Revenue</CardTitle>
-            <DollarSign className="h-4 w-4 text-success" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Inactive</CardTitle>
+            <Badge className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">${totalRevenue.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">Current month</p>
+            <div className="text-2xl font-bold text-foreground">{vendors.length - activeVendors}</div>
+            <p className="text-xs text-muted-foreground">Not active</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Reports Pending</CardTitle>
-            <FileText className="h-4 w-4 text-warning" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">Licensed</CardTitle>
+            <FileText className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-foreground">2</div>
-            <p className="text-xs text-muted-foreground">Need attention</p>
+            <div className="text-2xl font-bold text-foreground">{vendors.filter(v => v.license_number).length}</div>
+            <p className="text-xs text-muted-foreground">With license #</p>
           </CardContent>
         </Card>
       </div>
@@ -174,74 +260,80 @@ export default function Vendors() {
             <Store className="h-5 w-5 text-primary" />
             All Vendors
           </CardTitle>
-          <CardDescription>Comprehensive list of all registered vendors and their status</CardDescription>
+          <CardDescription>Comprehensive list of all registered vendors</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Vendor Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Patients</TableHead>
-                <TableHead>Monthly Revenue</TableHead>
-                <TableHead>Last Report</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {vendors.map((vendor) => (
-                <TableRow key={vendor.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-foreground">{vendor.name}</p>
-                      <p className="text-sm text-muted-foreground">{vendor.contactPerson}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{vendor.type}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      <p>{vendor.phone}</p>
-                      <p className="text-muted-foreground">{vendor.email}</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="text-center">
-                      <p className="font-medium">{vendor.patients}</p>
-                      <p className="text-xs text-muted-foreground">patients</p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium">${vendor.monthlyRevenue.toLocaleString()}</p>
-                  </TableCell>
-                  <TableCell>
-                    <p className="text-sm">{vendor.lastReport}</p>
-                  </TableCell>
-                  <TableCell>
-                    <Badge 
-                      variant={vendor.status === 'Active' ? 'default' : 'secondary'}
-                      className={vendor.status === 'Active' ? 'bg-success text-success-foreground' : ''}
-                    >
-                      {vendor.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button variant="ghost" size="sm">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Vendor Name</TableHead>
+                  <TableHead>License #</TableHead>
+                  <TableHead>Contact Person</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {vendors.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      No vendors found
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  vendors.map((vendor) => (
+                    <TableRow key={vendor.id}>
+                      <TableCell>
+                        <p className="font-medium text-foreground">{vendor.name}</p>
+                      </TableCell>
+                      <TableCell>
+                        <code className="text-sm bg-muted px-2 py-1 rounded">{vendor.license_number || 'N/A'}</code>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{vendor.contact_person || 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{vendor.phone || 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="text-sm">{vendor.email || 'N/A'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={vendor.status === 'active' ? 'default' : 'secondary'}
+                          className={vendor.status === 'active' ? 'bg-success text-success-foreground' : ''}
+                        >
+                          {vendor.status || 'unknown'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteVendor(vendor.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>

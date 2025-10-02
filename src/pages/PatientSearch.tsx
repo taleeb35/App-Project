@@ -3,249 +3,274 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, User, Phone, Mail, Calendar, DollarSign, Package } from "lucide-react";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Search, User, Calendar, Phone, Mail, MapPin, ShoppingBag } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+type Patient = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  k_number: string;
+  date_of_birth: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  status: string | null;
+  is_veteran: boolean | null;
+};
+
+type Purchase = {
+  id: string;
+  purchase_date: string;
+  amount: number;
+  grams: number | null;
+  product_type: string | null;
+};
 
 export default function PatientSearch() {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedPatient, setSelectedPatient] = useState<any>(null);
+  const [searching, setSearching] = useState(false);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [purchases, setPurchases] = useState<Purchase[]>([]);
 
-  // Mock patient data
-  const patients = [
-    {
-      id: 1,
-      name: "John Smith",
-      kNumber: "K123456789",
-      dob: "1985-03-15",
-      phone: "(555) 123-4567",
-      email: "john.smith@email.com",
-      status: "Active",
-      vendors: ["Green Valley", "Westside Cannabis"],
-      monthlyData: [
-        { month: "Nov 2024", vendor: "Green Valley", amount: 325.50, grams: 14.5 },
-        { month: "Nov 2024", vendor: "Westside Cannabis", amount: 180.00, grams: 8.0 },
-        { month: "Oct 2024", vendor: "Green Valley", amount: 295.75, grams: 13.2 },
-        { month: "Sep 2024", vendor: "Green Valley", amount: 412.25, grams: 18.5 },
-        { month: "Aug 2024", vendor: "Westside Cannabis", amount: 220.00, grams: 10.5 },
-        { month: "Jul 2024", vendor: "Green Valley", amount: 385.50, grams: 17.0 },
-      ]
-    },
-    {
-      id: 2,
-      name: "Jane Doe",
-      kNumber: "K987654321",
-      dob: "1978-11-22",
-      phone: "(555) 987-6543",
-      email: "jane.doe@email.com",
-      status: "Active",
-      vendors: ["Central Pharmacy"],
-      monthlyData: [
-        { month: "Nov 2024", vendor: "Central Pharmacy", amount: 85.00, grams: 0 },
-        { month: "Oct 2024", vendor: "Central Pharmacy", amount: 90.00, grams: 0 },
-        { month: "Sep 2024", vendor: "Central Pharmacy", amount: 85.00, grams: 0 },
-      ]
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a K number to search",
+        variant: "destructive",
+      });
+      return;
     }
-  ];
 
-  const filteredPatients = patients.filter(patient => 
-    patient.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    patient.kNumber.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    setSearching(true);
+    try {
+      // Search for patient
+      const { data: patientData, error: patientError } = await supabase
+        .from('patients')
+        .select('*')
+        .ilike('k_number', `%${searchQuery}%`)
+        .maybeSingle();
 
-  const calculateTotals = (patient: any) => {
-    const totalAmount = patient.monthlyData.reduce((sum: number, record: any) => sum + record.amount, 0);
-    const totalGrams = patient.monthlyData.reduce((sum: number, record: any) => sum + record.grams, 0);
-    const avgAmount = totalAmount / patient.monthlyData.length;
-    return { totalAmount, totalGrams, avgAmount };
+      if (patientError) throw patientError;
+
+      if (!patientData) {
+        toast({
+          title: "Not Found",
+          description: "No patient found with that K number",
+          variant: "destructive",
+        });
+        setPatient(null);
+        setPurchases([]);
+        return;
+      }
+
+      setPatient(patientData);
+
+      // Fetch patient purchases
+      const { data: purchasesData, error: purchasesError } = await supabase
+        .from('patient_purchases')
+        .select('*')
+        .eq('patient_id', patientData.id)
+        .order('purchase_date', { ascending: false });
+
+      if (purchasesError) throw purchasesError;
+      setPurchases(purchasesData || []);
+
+      toast({
+        title: "Success",
+        description: "Patient found successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      setPatient(null);
+      setPurchases([]);
+    } finally {
+      setSearching(false);
+    }
   };
+
+  const totalSpent = purchases.reduce((sum, p) => sum + Number(p.amount), 0);
+  const totalGrams = purchases.reduce((sum, p) => sum + (Number(p.grams) || 0), 0);
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Patient Search</h1>
-        <p className="text-muted-foreground">Search and view detailed patient purchase history</p>
+        <p className="text-muted-foreground">Search for patients by K number to view their information</p>
       </div>
 
-      {/* Search Bar */}
+      {/* Search Box */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5 text-primary" />
-            Search Patients
+            Search Patient
           </CardTitle>
-          <CardDescription>Search by patient name or K number</CardDescription>
+          <CardDescription>Enter a K number to search for patient records</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex gap-4">
             <Input
-              placeholder="Enter patient name or K number..."
+              placeholder="Enter K number (e.g., K123456789)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
               className="flex-1"
             />
-            <Button>
-              <Search className="h-4 w-4 mr-2" />
-              Search
+            <Button onClick={handleSearch} disabled={searching}>
+              {searching ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Searching...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4 mr-2" />
+                  Search
+                </>
+              )}
             </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Search Results */}
-      {searchQuery && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Search Results</CardTitle>
-            <CardDescription>Found {filteredPatients.length} patient(s)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {filteredPatients.map((patient) => (
-                <div
-                  key={patient.id}
-                  className="p-4 border rounded-lg cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => setSelectedPatient(patient)}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <h3 className="font-semibold text-foreground">{patient.name}</h3>
-                      <p className="text-sm text-muted-foreground">K#: {patient.kNumber}</p>
-                      <div className="flex gap-2">
-                        {patient.vendors.map((vendor, index) => (
-                          <Badge key={index} variant="secondary">{vendor}</Badge>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <Badge variant={patient.status === 'Active' ? 'default' : 'secondary'}>
-                        {patient.status}
-                      </Badge>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {patient.monthlyData.length} month(s) of data
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Patient Details */}
-      {selectedPatient && (
-        <div className="space-y-6">
+      {patient && (
+        <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5 text-primary" />
-                Patient Details: {selectedPatient.name}
+                Patient Information
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Name:</span> {selectedPatient.name}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">K Number:</span> {selectedPatient.kNumber}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Date of Birth:</span> {selectedPatient.dob}
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Personal Details</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <User className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Full Name</p>
+                        <p className="font-medium">{patient.first_name} {patient.last_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">K Number</p>
+                        <code className="font-medium bg-muted px-2 py-1 rounded">{patient.k_number}</code>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Date of Birth</p>
+                        <p className="font-medium">{patient.date_of_birth || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Veteran Status</p>
+                        <Badge variant={patient.is_veteran ? 'default' : 'outline'}>
+                          {patient.is_veteran ? 'Veteran' : 'Civilian'}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Phone:</span> {selectedPatient.phone}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">Email:</span> {selectedPatient.email}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Status:</span>
-                    <Badge variant={selectedPatient.status === 'Active' ? 'default' : 'secondary'}>
-                      {selectedPatient.status}
-                    </Badge>
+
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-4">Contact Information</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Phone</p>
+                        <p className="font-medium">{patient.phone || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Email</p>
+                        <p className="font-medium">{patient.email || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Address</p>
+                        <p className="font-medium">{patient.address || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Badge className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Status</p>
+                        <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
+                          {patient.status || 'Unknown'}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Purchase Summary */}
+          {/* Purchase History */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" />
-                6-Month Purchase Summary
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {(() => {
-                  const { totalAmount, totalGrams, avgAmount } = calculateTotals(selectedPatient);
-                  return (
-                    <>
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-primary">${totalAmount.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">Total Spent</p>
-                      </div>
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-success">{totalGrams.toFixed(1)}g</p>
-                        <p className="text-sm text-muted-foreground">Total Grams</p>
-                      </div>
-                      <div className="text-center p-4 bg-muted/50 rounded-lg">
-                        <p className="text-2xl font-bold text-accent">${avgAmount.toFixed(2)}</p>
-                        <p className="text-sm text-muted-foreground">Average/Month</p>
-                      </div>
-                    </>
-                  );
-                })()}
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <ShoppingBag className="h-5 w-5 text-primary" />
+                    Purchase History
+                  </CardTitle>
+                  <CardDescription>Total purchases: {purchases.length}</CardDescription>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Total Spent</p>
+                  <p className="text-2xl font-bold text-foreground">${totalSpent.toFixed(2)}</p>
+                  <p className="text-sm text-muted-foreground">{totalGrams.toFixed(2)}g total</p>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Monthly Purchase History */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" />
-                Monthly Purchase History
-              </CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Month</TableHead>
-                    <TableHead>Vendor/Pharmacy</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Grams</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {selectedPatient.monthlyData.map((record: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell>{record.month}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{record.vendor}</Badge>
-                      </TableCell>
-                      <TableCell className="font-medium">${record.amount.toFixed(2)}</TableCell>
-                      <TableCell>{record.grams > 0 ? `${record.grams}g` : 'N/A'}</TableCell>
-                    </TableRow>
+              {purchases.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  No purchase history found
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {purchases.map((purchase) => (
+                    <div key={purchase.id} className="flex justify-between items-center p-4 rounded-lg bg-muted/50">
+                      <div>
+                        <p className="font-medium">{purchase.product_type || 'Product'}</p>
+                        <p className="text-sm text-muted-foreground">{new Date(purchase.purchase_date).toLocaleDateString()}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-lg">${Number(purchase.amount).toFixed(2)}</p>
+                        {purchase.grams && <p className="text-sm text-muted-foreground">{purchase.grams}g</p>}
+                      </div>
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              )}
             </CardContent>
           </Card>
-        </div>
+        </>
       )}
     </div>
   );
