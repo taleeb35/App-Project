@@ -4,6 +4,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AdminLayout } from "@/components/layout/AdminLayout";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import PatientDatabase from "./pages/PatientDatabase";
 import PatientSearch from "./pages/PatientSearch";
@@ -22,28 +25,28 @@ const queryClient = new QueryClient();
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<AdminLayout><Dashboard /></AdminLayout>} />
-          <Route path="/notifications" element={<AdminLayout><Notifications /></AdminLayout>} />
-          <Route path="/patients" element={<AdminLayout><PatientDatabase /></AdminLayout>} />
-          <Route path="/patients/search" element={<AdminLayout><PatientSearch /></AdminLayout>} />
-          <Route path="/upload/clinic" element={<AdminLayout><UploadClinic /></AdminLayout>} />
-          <Route path="/upload/vendor" element={<AdminLayout><UploadVendor /></AdminLayout>} />
-          <Route path="/upload/pharmacy" element={<AdminLayout><UploadPharmacy /></AdminLayout>} />
-          <Route path="/vendors" element={<AdminLayout><Vendors /></AdminLayout>} />
-          <Route path="/vendors/reports" element={<AdminLayout><VendorReports /></AdminLayout>} />
-          <Route path="/reports" element={<AdminLayout><Reports /></AdminLayout>} />
-          <Route path="/reports/reconciliation" element={<AdminLayout><Reports /></AdminLayout>} />
-          <Route path="/reports/non-ordering" element={<AdminLayout><Reports /></AdminLayout>} />
-          <Route path="/reports/trending" element={<AdminLayout><Reports /></AdminLayout>} />
-          <Route path="/exceptions" element={<AdminLayout><Exceptions /></AdminLayout>} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AuthProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/" element={<ProtectedRoute><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/dashboard" element={<ProtectedRoute><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
+            <Route path="/patients/search" element={<ProtectedRoute><AdminLayout><PatientSearch /></AdminLayout></ProtectedRoute>} />
+            <Route path="/patients" element={<ProtectedRoute><AdminLayout><PatientDatabase /></AdminLayout></ProtectedRoute>} />
+            <Route path="/upload/clinic" element={<ProtectedRoute><AdminLayout><UploadClinic /></AdminLayout></ProtectedRoute>} />
+            <Route path="/upload/vendor" element={<ProtectedRoute><AdminLayout><UploadVendor /></AdminLayout></ProtectedRoute>} />
+            <Route path="/upload/pharmacy" element={<ProtectedRoute><AdminLayout><UploadPharmacy /></AdminLayout></ProtectedRoute>} />
+            <Route path="/vendors" element={<ProtectedRoute><AdminLayout><Vendors /></AdminLayout></ProtectedRoute>} />
+            <Route path="/vendors/reports" element={<ProtectedRoute><AdminLayout><VendorReports /></AdminLayout></ProtectedRoute>} />
+            <Route path="/exceptions" element={<ProtectedRoute><AdminLayout><Exceptions /></AdminLayout></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><AdminLayout><Notifications /></AdminLayout></ProtectedRoute>} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

@@ -2,12 +2,21 @@ import { useState } from "react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Settings, User } from "lucide-react";
+import { Bell, Settings, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 export function TopHeader() {
   const [selectedClinic, setSelectedClinic] = useState("clinic-1");
   const notifications = 3;
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
+  };
 
   const clinics = [
     { id: "clinic-1", name: "Downtown Medical Center", patients: 1247 },
@@ -67,9 +76,12 @@ export function TopHeader() {
             <Settings className="h-4 w-4" />
           </Button>
           
-          <Button variant="ghost" size="sm">
-            <User className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">{user?.email}</span>
+            <Button variant="ghost" size="sm" onClick={handleSignOut} title="Sign Out">
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
     </header>
