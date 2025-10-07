@@ -150,6 +150,7 @@ export type Database = {
           last_name: string
           phone: string | null
           preferred_vendor_id: string | null
+          prescription_status: string | null
           status: string | null
           updated_at: string | null
           vendor_id: string | null
@@ -167,6 +168,7 @@ export type Database = {
           last_name: string
           phone?: string | null
           preferred_vendor_id?: string | null
+          prescription_status?: string | null
           status?: string | null
           updated_at?: string | null
           vendor_id?: string | null
@@ -184,6 +186,7 @@ export type Database = {
           last_name?: string
           phone?: string | null
           preferred_vendor_id?: string | null
+          prescription_status?: string | null
           status?: string | null
           updated_at?: string | null
           vendor_id?: string | null

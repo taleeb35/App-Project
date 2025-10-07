@@ -7,8 +7,6 @@ import {
   Building2, 
   Pill, 
   AlertTriangle, 
-  TrendingUp, 
-  FileText,
   Upload,
   UserCheck
 } from "lucide-react";
@@ -104,55 +102,6 @@ export default function Dashboard() {
     },
   ];
 
-  const recentActivity = [
-    {
-      action: "Vendor Report Uploaded",
-      vendor: "Green Valley Producers",
-      time: "2 hours ago",
-      status: "success",
-    },
-    {
-      action: "Patient Data Import",
-      vendor: "Downtown Medical Center",
-      time: "4 hours ago", 
-      status: "success",
-    },
-    {
-      action: "Exception Detected",
-      vendor: "Westside Cannabis Clinic",
-      time: "6 hours ago",
-      status: "warning",
-    },
-    {
-      action: "Pharmacy Report Processed",
-      vendor: "Central Pharmacy",
-      time: "1 day ago",
-      status: "success",
-    },
-  ];
-
-  const pendingTasks = [
-    {
-      task: "Review 5 patient name mismatches",
-      priority: "high",
-      route: "/exceptions",
-    },
-    {
-      task: "Upload November vendor reports",
-      priority: "medium",
-      route: "/upload/vendor",
-    },
-    {
-      task: "Generate monthly reconciliation",
-      priority: "medium", 
-      route: "/reports/reconciliation",
-    },
-    {
-      task: "Review non-ordering veterans",
-      priority: "low",
-      route: "/reports/non-ordering",
-    },
-  ];
 
   return (
     <div className="space-y-6">
@@ -196,70 +145,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              Recent Activity
-            </CardTitle>
-            <CardDescription>Latest system activities and uploads</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{activity.action}</p>
-                    <p className="text-xs text-muted-foreground">{activity.vendor}</p>
-                  </div>
-                  <div className="text-right space-y-1">
-                    <Badge 
-                      variant={activity.status === 'success' ? 'default' : 'secondary'}
-                      className={activity.status === 'success' ? 'bg-success text-success-foreground' : ''}
-                    >
-                      {activity.status}
-                    </Badge>
-                    <p className="text-xs text-muted-foreground">{activity.time}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Pending Tasks */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              Pending Tasks
-            </CardTitle>
-            <CardDescription>Actions that require your attention</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {pendingTasks.map((task, index) => (
-                <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-foreground">{task.task}</p>
-                    <Badge 
-                      variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'default' : 'secondary'}
-                      className="text-xs"
-                    >
-                      {task.priority} priority
-                    </Badge>
-                  </div>
-                  <Button variant="outline" size="sm">
-                    View
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Quick Actions */}
       <Card>

@@ -3,256 +3,345 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Upload, FileSpreadsheet, CheckCircle, AlertCircle, Users, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { useClinic } from "@/contexts/ClinicContext";
+import * as XLSX from 'xlsx';
+
+interface PatientRow {
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  dob?: string;
+  k_number?: string;
+  phone?: string;
+  email?: string;
+  prescription_status?: string;
+  status?: string;
+}
 
 export default function UploadClinic() {
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadResult, setUploadResult] = useState<any>(null);
   const { toast } = useToast();
+  const { selectedClinic } = useClinic();
+  const [file, setFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState<{
+    total: number;
+    successful: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadFile(file);
-      setUploadResult(null);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const selectedFile = e.target.files[0];
+      
+      // Validate file type
+      if (!selectedFile.name.endsWith('.xlsx') && !selectedFile.name.endsWith('.xls')) {
+        toast({
+          title: "Invalid file type",
+          description: "Please upload an Excel file (.xlsx or .xls)",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      setFile(selectedFile);
+      setUploadResults(null);
     }
   };
 
-  const handleUpload = async () => {
-    if (!uploadFile) return;
-
-    setUploading(true);
-    setUploadProgress(0);
-
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          // Simulate processing results
-          setUploadResult({
-            totalRecords: 1247,
-            newPatients: 15,
-            updatedPatients: 1232,
-            duplicatesFound: 3,
-            errors: 0,
-          });
-          setUploading(false);
-          toast({
-            title: "Upload Complete",
-            description: "Clinic patient data has been successfully imported.",
-          });
-          return 100;
+  const parseExcelFile = async (file: File): Promise<PatientRow[]> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      
+      reader.onload = (e) => {
+        try {
+          const data = e.target?.result;
+          const workbook = XLSX.read(data, { type: 'binary' });
+          const sheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[sheetName];
+          const jsonData = XLSX.utils.sheet_to_json(worksheet) as PatientRow[];
+          resolve(jsonData);
+        } catch (error) {
+          reject(error);
         }
-        return prev + 10;
-      });
-    }, 200);
+      };
+      
+      reader.onerror = () => reject(new Error('Failed to read file'));
+      reader.readAsBinaryString(file);
+    });
   };
 
-  const requiredFields = [
-    "Patient Name",
-    "Date of Birth", 
-    "K Number (Insurance ID)",
-    "Phone Number",
-    "Email Address",
-    "Active Prescription Status",
-    "Assigned Producer(s)"
-  ];
+  const handleUpload = async () => {
+    if (!file) {
+      toast({
+        title: "No file selected",
+        description: "Please select an Excel file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
 
-  const formatGuidelines = [
-    "Excel (.xlsx) or CSV (.csv) format only",
-    "First row must contain column headers",
-    "Date of Birth format: YYYY-MM-DD",
-    "K Number format: K followed by 9 digits",
-    "Phone format: (XXX) XXX-XXXX",
-    "Multiple producers separated by semicolon"
-  ];
+    if (!selectedClinic) {
+      toast({
+        title: "No clinic selected",
+        description: "Please select a clinic first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsUploading(true);
+    const errors: string[] = [];
+    let successful = 0;
+    let failed = 0;
+
+    try {
+      const rows = await parseExcelFile(file);
+      
+      if (rows.length === 0) {
+        toast({
+          title: "Empty file",
+          description: "The Excel file contains no data",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        return;
+      }
+
+      // Process each row
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        
+        try {
+          // Parse name field (could be "First Last" or separate fields)
+          let firstName = row.first_name || '';
+          let lastName = row.last_name || '';
+          
+          if (row.name && !firstName && !lastName) {
+            const nameParts = row.name.trim().split(' ');
+            firstName = nameParts[0] || '';
+            lastName = nameParts.slice(1).join(' ') || '';
+          }
+
+          // Validate required fields
+          if (!firstName || !lastName) {
+            errors.push(`Row ${i + 2}: Missing name`);
+            failed++;
+            continue;
+          }
+
+          if (!row.k_number) {
+            errors.push(`Row ${i + 2}: Missing K Number`);
+            failed++;
+            continue;
+          }
+
+          // Parse date of birth
+          const dobField = row.date_of_birth || row.dob;
+          let dateOfBirth = null;
+          
+          if (dobField) {
+            // Handle Excel date serial number
+            if (typeof dobField === 'number') {
+              const excelEpoch = new Date(1899, 11, 30);
+              const date = new Date(excelEpoch.getTime() + dobField * 86400000);
+              dateOfBirth = date.toISOString().split('T')[0];
+            } else {
+              // Try to parse as string
+              const parsed = new Date(dobField);
+              if (!isNaN(parsed.getTime())) {
+                dateOfBirth = parsed.toISOString().split('T')[0];
+              }
+            }
+          }
+
+          // Insert patient
+          const { error } = await supabase
+            .from('patients')
+            .insert({
+              clinic_id: selectedClinic.id,
+              first_name: firstName,
+              last_name: lastName,
+              k_number: row.k_number,
+              date_of_birth: dateOfBirth,
+              phone: row.phone || null,
+              email: row.email || null,
+              prescription_status: row.prescription_status || row.status || 'active',
+              status: 'active',
+            });
+
+          if (error) {
+            errors.push(`Row ${i + 2}: ${error.message}`);
+            failed++;
+          } else {
+            successful++;
+          }
+        } catch (error: any) {
+          errors.push(`Row ${i + 2}: ${error.message}`);
+          failed++;
+        }
+      }
+
+      setUploadResults({
+        total: rows.length,
+        successful,
+        failed,
+        errors: errors.slice(0, 10), // Show first 10 errors
+      });
+
+      // Create upload record
+      await supabase.from('data_uploads').insert({
+        clinic_id: selectedClinic.id,
+        file_name: file.name,
+        upload_type: 'clinic',
+        records_count: successful,
+        status: failed > 0 ? 'completed_with_errors' : 'completed',
+      });
+
+      toast({
+        title: "Upload completed",
+        description: `Successfully imported ${successful} patients${failed > 0 ? ` (${failed} failed)` : ''}`,
+      });
+
+    } catch (error: any) {
+      toast({
+        title: "Upload failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Upload Clinic Patient Data</h1>
-        <p className="text-muted-foreground">Import monthly clinic patient lists</p>
+        <h1 className="text-3xl font-bold text-foreground">Upload Patient Data</h1>
+        <p className="text-muted-foreground">Import patient records from Excel file</p>
       </div>
 
-      {/* Data Format Requirements */}
+      {!selectedClinic && (
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please select a clinic from the top header before uploading patient data.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Data Format Requirements
+            Excel File Upload
           </CardTitle>
-          <CardDescription>Ensure your file meets these requirements before uploading</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold mb-3 text-foreground">Required Fields</h4>
-              <ul className="space-y-2">
-                {requiredFields.map((field, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-success" />
-                    <span className="text-sm">{field}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3 text-foreground">Format Guidelines</h4>
-              <ul className="space-y-2">
-                {formatGuidelines.map((guideline, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-warning" />
-                    <span className="text-sm">{guideline}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* File Upload */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Upload className="h-5 w-5 text-primary" />
-            Upload Patient File
-          </CardTitle>
-          <CardDescription>Select your clinic patient data file</CardDescription>
+          <CardDescription>
+            Upload an Excel file (.xlsx or .xls) containing patient information
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="file">Select File</Label>
+          <div className="space-y-2">
+            <Label htmlFor="file">Select Excel File</Label>
             <Input
               id="file"
               type="file"
-              accept=".xlsx,.csv"
-              onChange={handleFileSelect}
-              className="mt-1"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              disabled={isUploading || !selectedClinic}
             />
+            {file && (
+              <p className="text-sm text-muted-foreground">
+                Selected: {file.name}
+              </p>
+            )}
           </div>
 
-          {uploadFile && (
-            <div className="p-4 bg-muted/50 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-foreground">{uploadFile.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {(uploadFile.size / 1024 / 1024).toFixed(2)} MB
-                  </p>
-                </div>
-                <Badge variant="secondary">Ready to upload</Badge>
-              </div>
-            </div>
-          )}
-
-          {uploading && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Uploading and processing...</span>
-                <span>{uploadProgress}%</span>
-              </div>
-              <Progress value={uploadProgress} />
-            </div>
-          )}
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Excel file should contain these columns:</strong>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li><strong>name</strong> (or first_name + last_name) - Patient full name</li>
+                <li><strong>date_of_birth</strong> (or dob) - Date of birth</li>
+                <li><strong>k_number</strong> - Insurance ID for Veterans</li>
+                <li><strong>phone</strong> - Contact phone (optional)</li>
+                <li><strong>email</strong> - Email address (optional)</li>
+                <li><strong>prescription_status</strong> (or status) - Active prescription status (optional, defaults to "active")</li>
+              </ul>
+            </AlertDescription>
+          </Alert>
 
           <Button 
-            onClick={handleUpload}
-            disabled={!uploadFile || uploading}
+            onClick={handleUpload} 
+            disabled={!file || isUploading || !selectedClinic}
             className="w-full"
           >
-            {uploading ? (
-              <>Processing...</>
+            {isUploading ? (
+              <>
+                <Upload className="mr-2 h-4 w-4 animate-pulse" />
+                Uploading...
+              </>
             ) : (
               <>
-                <Upload className="h-4 w-4 mr-2" />
+                <Upload className="mr-2 h-4 w-4" />
                 Upload Patient Data
               </>
             )}
           </Button>
-        </CardContent>
-      </Card>
 
-      {/* Upload Results */}
-      {uploadResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-success" />
-              Upload Results
-            </CardTitle>
-            <CardDescription>Summary of imported patient data</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-primary/10 rounded-lg">
-                <Users className="h-8 w-8 text-primary mx-auto mb-2" />
-                <p className="text-2xl font-bold text-primary">{uploadResult.totalRecords}</p>
-                <p className="text-sm text-muted-foreground">Total Records</p>
+          {uploadResults && (
+            <div className="mt-6 space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm">Total Rows</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold">{uploadResults.total}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-success">Successful</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-success">{uploadResults.successful}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-destructive">Failed</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-destructive">{uploadResults.failed}</p>
+                  </CardContent>
+                </Card>
               </div>
-              <div className="text-center p-4 bg-success/10 rounded-lg">
-                <CheckCircle className="h-8 w-8 text-success mx-auto mb-2" />
-                <p className="text-2xl font-bold text-success">{uploadResult.newPatients}</p>
-                <p className="text-sm text-muted-foreground">New Patients</p>
-              </div>
-              <div className="text-center p-4 bg-accent/10 rounded-lg">
-                <Calendar className="h-8 w-8 text-accent mx-auto mb-2" />
-                <p className="text-2xl font-bold text-accent">{uploadResult.updatedPatients}</p>
-                <p className="text-sm text-muted-foreground">Updated Records</p>
-              </div>
-              <div className="text-center p-4 bg-warning/10 rounded-lg">
-                <AlertCircle className="h-8 w-8 text-warning mx-auto mb-2" />
-                <p className="text-2xl font-bold text-warning">{uploadResult.duplicatesFound}</p>
-                <p className="text-sm text-muted-foreground">Duplicates Found</p>
-              </div>
+
+              {uploadResults.errors.length > 0 && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <strong>Errors encountered:</strong>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      {uploadResults.errors.map((error, idx) => (
+                        <li key={idx} className="text-sm">{error}</li>
+                      ))}
+                      {uploadResults.errors.length === 10 && uploadResults.failed > 10 && (
+                        <li className="text-sm italic">... and {uploadResults.failed - 10} more errors</li>
+                      )}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
-
-            {uploadResult.duplicatesFound > 0 && (
-              <div className="mt-4 p-4 bg-warning/10 border border-warning/20 rounded-lg">
-                <p className="text-sm text-warning font-medium">
-                  {uploadResult.duplicatesFound} duplicate records were found and automatically merged.
-                  Please review the exception handling section for details.
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Recent Uploads */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Uploads</CardTitle>
-          <CardDescription>History of recent patient data uploads</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[
-              { date: "2024-11-15", records: 1247, status: "Success", clinic: "Downtown Medical Center" },
-              { date: "2024-10-15", records: 1235, status: "Success", clinic: "Downtown Medical Center" },
-              { date: "2024-09-15", records: 1220, status: "Success", clinic: "Downtown Medical Center" },
-            ].map((upload, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                <div>
-                  <p className="font-medium text-foreground">{upload.clinic}</p>
-                  <p className="text-sm text-muted-foreground">{upload.date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{upload.records} records</p>
-                  <Badge variant={upload.status === 'Success' ? 'default' : 'destructive'}>
-                    {upload.status}
-                  </Badge>
-                </div>
-              </div>
-            ))}
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>
