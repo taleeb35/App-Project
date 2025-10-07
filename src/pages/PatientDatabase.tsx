@@ -23,16 +23,32 @@ type Patient = {
   status: string | null;
   is_veteran: boolean | null;
   preferred_vendor_id: string | null;
+  clinic_id: string;
+  vendor_id: string | null;
   created_at: string;
+};
+
+type Clinic = {
+  id: string;
+  name: string;
+};
+
+type Vendor = {
+  id: string;
+  name: string;
 };
 
 export default function PatientDatabase() {
   const { toast } = useToast();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [clinics, setClinics] = useState<Clinic[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -42,11 +58,49 @@ export default function PatientDatabase() {
     email: "",
     address: "",
     is_veteran: false,
+    clinic_id: "",
+    vendor_id: "",
   });
 
   useEffect(() => {
     fetchPatients();
+    fetchClinics();
+    fetchVendors();
   }, []);
+
+  const fetchClinics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setClinics(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch clinics",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const fetchVendors = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('id, name')
+        .order('name');
+      if (error) throw error;
+      setVendors(data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch vendors",
+        variant: "destructive",
+      });
+    }
+  };
 
   const fetchPatients = async () => {
     try {
@@ -69,28 +123,27 @@ export default function PatientDatabase() {
   };
 
   const handleAddPatient = async () => {
+    if (!formData.clinic_id) {
+      toast({
+        title: "Error",
+        description: "Please select a clinic",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
-
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('clinic_id')
-        .eq('id', user.id)
-        .single();
-
-      if (!profile?.clinic_id) {
-        toast({
-          title: "Error",
-          description: "No clinic associated with your account",
-          variant: "destructive",
-        });
-        return;
-      }
-
       const { error } = await supabase.from('patients').insert({
-        ...formData,
-        clinic_id: profile.clinic_id,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        k_number: formData.k_number,
+        date_of_birth: formData.date_of_birth || null,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        address: formData.address || null,
+        is_veteran: formData.is_veteran,
+        clinic_id: formData.clinic_id,
+        vendor_id: formData.vendor_id || null,
         status: 'active',
       });
 
@@ -111,6 +164,84 @@ export default function PatientDatabase() {
         email: "",
         address: "",
         is_veteran: false,
+        clinic_id: "",
+        vendor_id: "",
+      });
+      fetchPatients();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditPatient = (patient: Patient) => {
+    setEditingPatient(patient);
+    setFormData({
+      first_name: patient.first_name,
+      last_name: patient.last_name,
+      k_number: patient.k_number,
+      date_of_birth: patient.date_of_birth || "",
+      phone: patient.phone || "",
+      email: patient.email || "",
+      address: patient.address || "",
+      is_veteran: patient.is_veteran || false,
+      clinic_id: patient.clinic_id,
+      vendor_id: patient.vendor_id || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdatePatient = async () => {
+    if (!editingPatient) return;
+    if (!formData.clinic_id) {
+      toast({
+        title: "Error",
+        description: "Please select a clinic",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('patients')
+        .update({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          k_number: formData.k_number,
+          date_of_birth: formData.date_of_birth || null,
+          phone: formData.phone || null,
+          email: formData.email || null,
+          address: formData.address || null,
+          is_veteran: formData.is_veteran,
+          clinic_id: formData.clinic_id,
+          vendor_id: formData.vendor_id || null,
+        })
+        .eq('id', editingPatient.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Patient updated successfully",
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingPatient(null);
+      setFormData({
+        first_name: "",
+        last_name: "",
+        k_number: "",
+        date_of_birth: "",
+        phone: "",
+        email: "",
+        address: "",
+        is_veteran: false,
+        clinic_id: "",
+        vendor_id: "",
       });
       fetchPatients();
     } catch (error: any) {
@@ -247,6 +378,36 @@ export default function PatientDatabase() {
                   onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                   placeholder="123 Main St, City, State ZIP"
                 />
+              </div>
+              <div>
+                <Label htmlFor="clinic_id">Clinic *</Label>
+                <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="vendor_id">Vendor (Optional)</Label>
+                <Select value={formData.vendor_id} onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select vendor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {vendors.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="col-span-2 flex items-center space-x-2">
                 <input
@@ -400,7 +561,11 @@ export default function PatientDatabase() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditPatient(patient)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -421,6 +586,126 @@ export default function PatientDatabase() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Patient</DialogTitle>
+            <DialogDescription>Update patient information</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div>
+              <Label htmlFor="edit_first_name">First Name *</Label>
+              <Input
+                id="edit_first_name"
+                value={formData.first_name}
+                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+                placeholder="John"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_last_name">Last Name *</Label>
+              <Input
+                id="edit_last_name"
+                value={formData.last_name}
+                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+                placeholder="Doe"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_k_number">K Number *</Label>
+              <Input
+                id="edit_k_number"
+                value={formData.k_number}
+                onChange={(e) => setFormData({ ...formData, k_number: e.target.value })}
+                placeholder="K123456789"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_date_of_birth">Date of Birth</Label>
+              <Input
+                id="edit_date_of_birth"
+                type="date"
+                value={formData.date_of_birth}
+                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_phone">Phone</Label>
+              <Input
+                id="edit_phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_email">Email</Label>
+              <Input
+                id="edit_email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="john@example.com"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label htmlFor="edit_address">Address</Label>
+              <Input
+                id="edit_address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="123 Main St, City, State ZIP"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_clinic_id">Clinic *</Label>
+              <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select clinic" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clinics.map((clinic) => (
+                    <SelectItem key={clinic.id} value={clinic.id}>
+                      {clinic.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="edit_vendor_id">Vendor (Optional)</Label>
+              <Select value={formData.vendor_id} onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select vendor" />
+                </SelectTrigger>
+                <SelectContent>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="edit_is_veteran"
+                checked={formData.is_veteran}
+                onChange={(e) => setFormData({ ...formData, is_veteran: e.target.checked })}
+                className="h-4 w-4"
+              />
+              <Label htmlFor="edit_is_veteran" className="cursor-pointer">Veteran Status</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdatePatient}>Update Patient</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -25,6 +25,8 @@ export default function Clinics() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     license_number: "",
@@ -78,6 +80,61 @@ export default function Clinics() {
       });
 
       setIsAddDialogOpen(false);
+      setFormData({
+        name: "",
+        license_number: "",
+        phone: "",
+        email: "",
+        address: "",
+      });
+      fetchClinics();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditClinic = (clinic: Clinic) => {
+    setEditingClinic(clinic);
+    setFormData({
+      name: clinic.name,
+      license_number: clinic.license_number || "",
+      phone: clinic.phone || "",
+      email: clinic.email || "",
+      address: clinic.address || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateClinic = async () => {
+    if (!editingClinic) return;
+    if (!formData.name) {
+      toast({
+        title: "Error",
+        description: "Clinic name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('clinics')
+        .update(formData)
+        .eq('id', editingClinic.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "Clinic updated successfully",
+      });
+
+      setIsEditDialogOpen(false);
+      setEditingClinic(null);
       setFormData({
         name: "",
         license_number: "",
@@ -248,7 +305,11 @@ export default function Clinics() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => handleEditClinic(clinic)}
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button 
@@ -269,6 +330,68 @@ export default function Clinics() {
           )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Clinic</DialogTitle>
+            <DialogDescription>Update clinic information</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div>
+              <Label htmlFor="edit_name">Clinic Name *</Label>
+              <Input
+                id="edit_name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="Enter clinic name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_license_number">License Number</Label>
+              <Input
+                id="edit_license_number"
+                value={formData.license_number}
+                onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
+                placeholder="License #"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_phone">Phone</Label>
+              <Input
+                id="edit_phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="(555) 123-4567"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_email">Email</Label>
+              <Input
+                id="edit_email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="contact@clinic.com"
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit_address">Address</Label>
+              <Input
+                id="edit_address"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                placeholder="Full address"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateClinic}>Update Clinic</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
