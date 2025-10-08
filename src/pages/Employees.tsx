@@ -65,26 +65,41 @@ export default function Employees() {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // First get clinic employees with clinic info
+      const { data: employeesData, error: employeesError } = await supabase
         .from('clinic_employees')
         .select(`
           id,
           user_id,
           clinic_id,
-          clinics (name),
-          profiles (email, full_name)
+          clinics!clinic_employees_clinic_id_fkey (name)
         `);
 
-      if (error) throw error;
+      if (employeesError) throw employeesError;
 
-      const formattedEmployees = data?.map((emp: any) => ({
-        id: emp.id,
-        user_id: emp.user_id,
-        clinic_id: emp.clinic_id,
-        email: emp.profiles?.email || '',
-        full_name: emp.profiles?.full_name || '',
-        clinic_name: emp.clinics?.name || '',
-      })) || [];
+      // Get user profiles separately
+      const userIds = employeesData?.map(emp => emp.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Map profiles to employees
+      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+
+      const formattedEmployees = employeesData?.map((emp: any) => {
+        const profile = profilesMap.get(emp.user_id);
+        return {
+          id: emp.id,
+          user_id: emp.user_id,
+          clinic_id: emp.clinic_id,
+          email: profile?.email || '',
+          full_name: profile?.full_name || '',
+          clinic_name: emp.clinics?.name || '',
+        };
+      }) || [];
 
       setEmployees(formattedEmployees);
     } catch (error: any) {
