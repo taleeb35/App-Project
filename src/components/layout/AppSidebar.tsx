@@ -12,15 +12,15 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
-  Users,
-  Building2,
-  Pill,
+  Database,
+  Search,
   Upload,
-  FileText,
-  AlertTriangle,
-  BarChart3,
-  UserCheck,
-  Store,
+  Package,
+  Building2,
+  FileUp,
+  Users,
+  TestTube,
+  Pill,
 } from "lucide-react";
 
 const navigationItems = [
@@ -28,51 +28,30 @@ const navigationItems = [
     title: "Overview",
     items: [
       { title: "Dashboard", url: "/", icon: LayoutDashboard },
-      { title: "Notifications", url: "/notifications", icon: AlertTriangle },
-    ]
-  },
-  {
-    title: "Patient Management",
-    items: [
-      { title: "Patient Database", url: "/patients", icon: Users },
-      { title: "Patient Search", url: "/patients/search", icon: UserCheck },
-    ]
-  },
-  {
-    title: "Data Management",
-    items: [
-      { title: "Upload Clinic Data", url: "/upload/clinic", icon: Upload },
-      { title: "Upload Vendor Reports", url: "/upload/vendor", icon: Building2 },
-      { title: "Upload Pharmacy Data", url: "/upload/pharmacy", icon: Pill },
-    ]
-  },
-  {
-    title: "Vendors",
-    items: [
-      { title: "Manage Vendors", url: "/vendors", icon: Store },
-      { title: "Vendor Reports", url: "/vendors/reports", icon: FileText },
-    ]
+    ],
   },
   {
     title: "Clinics",
     items: [
       { title: "Manage Clinics", url: "/clinics", icon: Building2 },
-    ]
+      { title: "Clinic Employees", url: "/employees", icon: Users },
+      { title: "Dummy Data", url: "/dummy-data", icon: TestTube },
+    ],
   },
   {
-    title: "Reports & Analytics",
+    title: "Patient Management",
     items: [
-      { title: "All Reports", url: "/reports", icon: BarChart3 },
-      { title: "Reconciliation", url: "/reports/reconciliation", icon: FileText },
-      { title: "Non-Ordering", url: "/reports/non-ordering", icon: FileText },
-      { title: "Business Trending", url: "/reports/trending", icon: FileText },
-    ]
+      { title: "Patient Database", url: "/patients", icon: Database },
+      { title: "Patient Search", url: "/patients/search", icon: Search },
+      { title: "Upload Patient Data", url: "/upload/clinic", icon: Upload },
+    ],
   },
   {
-    title: "System",
+    title: "Vendors",
     items: [
-      { title: "Exception Handling", url: "/exceptions", icon: AlertTriangle },
-    ]
+      { title: "Manage Vendors", url: "/vendors", icon: Package },
+      { title: "Upload Vendor Data", url: "/upload/vendor", icon: FileUp },
+    ],
   },
 ];
 

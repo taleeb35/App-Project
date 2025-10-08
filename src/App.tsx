@@ -19,6 +19,8 @@ import Vendors from "./pages/Vendors";
 import Clinics from "./pages/Clinics";
 import Exceptions from "./pages/Exceptions";
 import Notifications from "./pages/Notifications";
+import Employees from "./pages/Employees";
+import DummyData from "./pages/DummyData";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +47,8 @@ const App = () => (
             <Route path="/vendors/reports" element={<ProtectedRoute><AdminLayout><VendorReports /></AdminLayout></ProtectedRoute>} />
             <Route path="/exceptions" element={<ProtectedRoute><AdminLayout><Exceptions /></AdminLayout></ProtectedRoute>} />
             <Route path="/notifications" element={<ProtectedRoute><AdminLayout><Notifications /></AdminLayout></ProtectedRoute>} />
+            <Route path="/employees" element={<ProtectedRoute><AdminLayout><Employees /></AdminLayout></ProtectedRoute>} />
+            <Route path="/dummy-data" element={<ProtectedRoute><AdminLayout><DummyData /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      clinic_employees: {
+        Row: {
+          clinic_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          clinic_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          clinic_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinic_employees_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clinics: {
         Row: {
           address: string | null
@@ -136,6 +165,64 @@ export type Database = {
           },
         ]
       }
+      patient_vendor_usage: {
+        Row: {
+          amount_spent: number | null
+          clinic_id: string
+          created_at: string | null
+          grams_purchased: number | null
+          id: string
+          patient_id: string
+          updated_at: string | null
+          usage_month: string
+          vendor_id: string
+        }
+        Insert: {
+          amount_spent?: number | null
+          clinic_id: string
+          created_at?: string | null
+          grams_purchased?: number | null
+          id?: string
+          patient_id: string
+          updated_at?: string | null
+          usage_month: string
+          vendor_id: string
+        }
+        Update: {
+          amount_spent?: number | null
+          clinic_id?: string
+          created_at?: string | null
+          grams_purchased?: number | null
+          id?: string
+          patient_id?: string
+          updated_at?: string | null
+          usage_month?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patient_vendor_usage_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_vendor_usage_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patient_vendor_usage_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patients: {
         Row: {
           address: string | null
@@ -145,6 +232,7 @@ export type Database = {
           email: string | null
           first_name: string
           id: string
+          is_dummy: boolean | null
           is_veteran: boolean | null
           k_number: string
           last_name: string
@@ -163,6 +251,7 @@ export type Database = {
           email?: string | null
           first_name: string
           id?: string
+          is_dummy?: boolean | null
           is_veteran?: boolean | null
           k_number: string
           last_name: string
@@ -181,6 +270,7 @@ export type Database = {
           email?: string | null
           first_name?: string
           id?: string
+          is_dummy?: boolean | null
           is_veteran?: boolean | null
           k_number?: string
           last_name?: string
@@ -271,6 +361,70 @@ export type Database = {
         }
         Relationships: []
       }
+      vendor_reports: {
+        Row: {
+          amount: number | null
+          clinic_id: string
+          created_at: string | null
+          grams_sold: number | null
+          id: string
+          is_dummy: boolean | null
+          patient_id: string
+          product_name: string | null
+          report_month: string
+          updated_at: string | null
+          vendor_id: string
+        }
+        Insert: {
+          amount?: number | null
+          clinic_id: string
+          created_at?: string | null
+          grams_sold?: number | null
+          id?: string
+          is_dummy?: boolean | null
+          patient_id: string
+          product_name?: string | null
+          report_month: string
+          updated_at?: string | null
+          vendor_id: string
+        }
+        Update: {
+          amount?: number | null
+          clinic_id?: string
+          created_at?: string | null
+          grams_sold?: number | null
+          id?: string
+          is_dummy?: boolean | null
+          patient_id?: string
+          product_name?: string | null
+          report_month?: string
+          updated_at?: string | null
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_reports_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendor_reports_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       vendors: {
         Row: {
           address: string | null
@@ -279,6 +433,7 @@ export type Database = {
           created_at: string | null
           email: string | null
           id: string
+          is_dummy: boolean | null
           license_number: string | null
           name: string
           phone: string | null
@@ -292,6 +447,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_dummy?: boolean | null
           license_number?: string | null
           name: string
           phone?: string | null
@@ -305,6 +461,7 @@ export type Database = {
           created_at?: string | null
           email?: string | null
           id?: string
+          is_dummy?: boolean | null
           license_number?: string | null
           name?: string
           phone?: string | null
