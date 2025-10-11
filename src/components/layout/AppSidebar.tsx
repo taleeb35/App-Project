@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/sidebar";
 import {
   LayoutDashboard,
-  Database,
+  Database as DatabaseIcon,
   Search,
   Upload,
   Package,
@@ -21,6 +21,7 @@ import {
   Users,
   TestTube,
   Pill,
+  Download,
 } from "lucide-react";
 
 const navigationItems = [
@@ -40,7 +41,7 @@ const navigationItems = [
   {
     title: "Patient Management",
     items: [
-      { title: "Patient Database", url: "/patients", icon: Database },
+      { title: "Patient Database", url: "/patients", icon: DatabaseIcon },
       { title: "Patient Search", url: "/patients/search", icon: Search },
       { title: "Upload Patient Data", url: "/upload/clinic", icon: Upload },
     ],
@@ -50,6 +51,12 @@ const navigationItems = [
     items: [
       { title: "Manage Vendors", url: "/vendors", icon: Package },
       { title: "Vendor Reports", url: "/vendors/reports", icon: FileUp },
+    ],
+  },
+  {
+    title: "Data Management",
+    items: [
+      { title: "Import Data", url: "/import-data", icon: Download },
     ],
   },
 ];

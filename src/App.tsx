@@ -22,6 +22,7 @@ import DummyData from "./pages/DummyData";
 import VendorReportUpload from "./pages/VendorReportUpload";
 import VendorReportView from "./pages/VendorReportView";
 import VendorReports from "./pages/VendorReports";
+import ImportData from "./pages/ImportData";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
             <Route path="/dummy-data" element={<ProtectedRoute><AdminLayout><DummyData /></AdminLayout></ProtectedRoute>} />
             <Route path="/vendors/upload" element={<ProtectedRoute><AdminLayout><VendorReportUpload /></AdminLayout></ProtectedRoute>} />
             <Route path="/vendors/reports-view" element={<ProtectedRoute><AdminLayout><VendorReportView /></AdminLayout></ProtectedRoute>} />
+            <Route path="/import-data" element={<ProtectedRoute><AdminLayout><ImportData /></AdminLayout></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

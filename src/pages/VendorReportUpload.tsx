@@ -19,21 +19,16 @@ export default function VendorReportUpload() {
   const [uploading, setUploading] = useState(false);
   const [vendors, setVendors] = useState<any[]>([]);
 
-  // Fetch vendors for the selected clinic
+  // Fetch all vendors
   useEffect(() => {
-    if (selectedClinic) {
-      fetchVendors();
-    }
-  }, [selectedClinic]);
+    fetchVendors();
+  }, []);
 
   const fetchVendors = async () => {
-    if (!selectedClinic) return;
-    
     try {
       const { data, error } = await supabase
         .from('vendors')
         .select('*')
-        .eq('clinic_id', selectedClinic.id)
         .eq('status', 'active')
         .order('name');
 

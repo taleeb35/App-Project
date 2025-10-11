@@ -34,8 +34,8 @@ export default function VendorReportView() {
   const [vendors, setVendors] = useState<any[]>([]);
 
   useEffect(() => {
+    fetchVendors();
     if (selectedClinic) {
-      fetchVendors();
       fetchReports();
     }
   }, [selectedClinic]);
@@ -45,13 +45,10 @@ export default function VendorReportView() {
   }, [reports, searchTerm, selectedMonth, selectedVendor]);
 
   const fetchVendors = async () => {
-    if (!selectedClinic) return;
-    
     try {
       const { data, error } = await supabase
         .from('vendors')
         .select('*')
-        .eq('clinic_id', selectedClinic.id)
         .order('name');
 
       if (error) throw error;
