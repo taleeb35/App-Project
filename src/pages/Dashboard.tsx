@@ -95,6 +95,7 @@ export default function Dashboard() {
       subtitle: `${stats.activePatients} active`,
       icon: Users,
       color: "text-primary",
+      link: "/patients",
     },
     {
       title: "Veterans",
@@ -102,6 +103,7 @@ export default function Dashboard() {
       subtitle: `${stats.totalPatients > 0 ? ((stats.veterans / stats.totalPatients) * 100).toFixed(1) : 0}% of total`,
       icon: UserCheck,
       color: "text-accent",
+      link: "/patients",
     },
     {
       title: "Civilians",
@@ -109,6 +111,7 @@ export default function Dashboard() {
       subtitle: `${stats.totalPatients > 0 ? ((stats.civilians / stats.totalPatients) * 100).toFixed(1) : 0}% of total`,
       icon: Users,
       color: "text-muted-foreground",
+      link: "/patients",
     },
     {
       title: "Active Vendors",
@@ -116,6 +119,7 @@ export default function Dashboard() {
       subtitle: "Registered",
       icon: Building2,
       color: "text-success",
+      link: "/vendors",
     },
   ];
 
@@ -151,7 +155,11 @@ export default function Dashboard() {
           </>
         ) : (
           statsCards.map((stat) => (
-          <Card key={stat.title}>
+          <Card 
+            key={stat.title} 
+            className="cursor-pointer hover:bg-accent/5 transition-colors"
+            onClick={() => navigate(stat.link)}
+          >
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}

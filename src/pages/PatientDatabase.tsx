@@ -50,7 +50,7 @@ export default function PatientDatabase() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -472,16 +472,6 @@ export default function PatientDatabase() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle>
-            <span className="h-4 w-4 text-success">✓</span>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.active}</div>
-            <p className="text-xs text-muted-foreground">Active patients</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Search and Filters */}
@@ -500,22 +490,6 @@ export default function PatientDatabase() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="flex-1"
             />
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-32">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Button variant="outline">
-              <Download className="h-4 w-4 mr-2" />
-              Export
-            </Button>
           </div>
         </CardContent>
       </Card>
@@ -602,9 +576,26 @@ export default function PatientDatabase() {
               {/* Pagination Controls */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-between mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Page {currentPage} of {totalPages}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">
+                      Page {currentPage} of {totalPages}
+                    </p>
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                      setItemsPerPage(Number(value));
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-24">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="75">75</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-muted-foreground">per page</span>
+                  </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
