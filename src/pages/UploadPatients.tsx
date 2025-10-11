@@ -10,17 +10,28 @@ import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 
 interface PatientRow {
+  // Lowercase/underscore variants
   name?: string;
   first_name?: string;
   last_name?: string;
-  date_of_birth?: string;
-  dob?: string;
+  date_of_birth?: string | number;
+  dob?: string | number;
   k_number?: string;
   phone?: string;
   email?: string;
   prescription_status?: string;
   status?: string;
-  is_veteran?: string | boolean;
+  vendors?: string;
+  type?: string;
+  // Exact headers from sample sheet (Title Case)
+  Name?: string;
+  DOB?: string | number;
+  'K Number'?: string;
+  Phone?: string;
+  Email?: string;
+  'Prescription Status'?: string;
+  Vendors?: string;
+  Type?: string;
 }
 
 export default function UploadPatients() {
@@ -81,22 +92,22 @@ export default function UploadPatients() {
     return { firstName, lastName };
   };
 
-  const parseDate = (dateStr: string): string | null => {
-    if (!dateStr) return null;
-    try {
-      // Handle Excel serial date or string date
-      if (typeof dateStr === 'number') {
-        const date = XLSX.SSF.parse_date_code(dateStr);
-        return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
-      }
-      // Handle string date format YYYY-MM-DD or similar
-      const date = new Date(dateStr);
-      if (isNaN(date.getTime())) return null;
-      return date.toISOString().split('T')[0];
-    } catch {
-      return null;
+const parseDate = (dateStr: string | number): string | null => {
+  if (dateStr === undefined || dateStr === null || dateStr === ('' as any)) return null;
+  try {
+    // Handle Excel serial date or string date
+    if (typeof dateStr === 'number') {
+      const date = XLSX.SSF.parse_date_code(dateStr);
+      return `${date.y}-${String(date.m).padStart(2, '0')}-${String(date.d).padStart(2, '0')}`;
     }
-  };
+    // Handle string date format YYYY-MM-DD or similar
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return null;
+    return parsed.toISOString().split('T')[0];
+  } catch {
+    return null;
+  }
+};
 
   const handleUpload = async () => {
     if (!file) {
@@ -130,12 +141,12 @@ export default function UploadPatients() {
         const rowNum = i + 2; // Excel row number (accounting for header)
 
         try {
-          // Handle different column name formats
-          const fullName = row.name || (row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : '');
-          const patientNumber = row.k_number?.toString().trim();
+          // Normalize values from multiple possible header names
+          const fullName = row.name || (row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : row.Name || '');
+          const patientNumber = (row.k_number || row['K Number'])?.toString().trim();
           
           if (!fullName || !patientNumber) {
-            errors.push(`Row ${rowNum}: Missing required fields (name and k_number)`);
+            errors.push(`Row ${rowNum}: Missing required fields (Name and K Number)`);
             continue;
           }
 
@@ -143,8 +154,8 @@ export default function UploadPatients() {
             ? { firstName: row.first_name, lastName: row.last_name }
             : parseName(fullName);
           
-          const dobValue = row.date_of_birth || row.dob;
-          const dob = dobValue ? parseDate(dobValue.toString()) : null;
+          const dobRaw = (row.date_of_birth ?? row.dob ?? row.DOB) as string | number | undefined;
+          const dob = dobRaw !== undefined ? parseDate(dobRaw) : null;
 
           // Check for duplicate based on patient_number and clinic
           const { data: existingPatients, error: checkError } = await supabase
@@ -160,6 +171,10 @@ export default function UploadPatients() {
             continue; // Skip duplicate
           }
 
+          // Map prescription status to patient.status
+          const rxStatusRaw = (row.prescription_status || row.status || row['Prescription Status'] || 'active').toString().toLowerCase();
+          const patientStatus = rxStatusRaw === 'inactive' ? 'inactive' : 'active';
+
           // Insert new patient
           const { error: insertError } = await supabase
             .from('patients')
@@ -169,9 +184,9 @@ export default function UploadPatients() {
               first_name: firstName,
               last_name: lastName,
               date_of_birth: dob,
-              phone: row.phone?.toString().trim() || null,
-              email: row.email?.toString().trim() || null,
-              status: 'active',
+              phone: (row.phone || row.Phone)?.toString().trim() || null,
+              email: (row.email || row.Email)?.toString().trim() || null,
+              status: patientStatus,
             });
 
           if (insertError) throw insertError;
@@ -259,12 +274,14 @@ export default function UploadPatients() {
           </CardHeader>
           <CardContent>
             <ul className="list-disc list-inside space-y-2 text-sm">
-              <li><strong>name</strong> (or first_name + last_name) - Patient full name</li>
-              <li><strong>date_of_birth</strong> (or dob) - Date of birth</li>
-              <li><strong>k_number</strong> - Insurance ID for Veterans</li>
-              <li><strong>phone</strong> - Contact phone (optional)</li>
-              <li><strong>email</strong> - Email address (optional)</li>
-              <li><strong>prescription_status</strong> (or status) - Active prescription status (optional, defaults to "active")</li>
+              <li><strong>Name</strong> (or first_name + last_name) – Patient full name</li>
+              <li><strong>DOB</strong> (or date_of_birth / dob) – Date of birth</li>
+              <li><strong>K Number</strong> (or k_number) – Unique patient number</li>
+              <li><strong>Phone</strong> (or phone) – Contact phone (optional)</li>
+              <li><strong>Email</strong> (or email) – Email address (optional)</li>
+              <li><strong>Prescription Status</strong> (or prescription_status/status) – active/inactive (optional, defaults to "active")</li>
+              <li><strong>Vendors</strong> – Comma-separated vendor names (optional)</li>
+              <li><strong>Type</strong> – Veterans or Civilians (optional)</li>
             </ul>
           </CardContent>
         </Card>
