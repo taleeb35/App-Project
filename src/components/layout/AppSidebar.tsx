@@ -49,8 +49,7 @@ const navigationItems = [
     title: "Vendors",
     items: [
       { title: "Manage Vendors", url: "/vendors", icon: Package },
-      { title: "Upload Vendor Report", url: "/vendors/upload", icon: FileUp },
-      { title: "View Vendor Reports", url: "/vendors/reports-view", icon: FileUp },
+      { title: "Vendor Reports", url: "/vendors/reports", icon: FileUp },
     ],
   },
 ];

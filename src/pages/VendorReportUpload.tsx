@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,11 +20,11 @@ export default function VendorReportUpload() {
   const [vendors, setVendors] = useState<any[]>([]);
 
   // Fetch vendors for the selected clinic
-  useState(() => {
+  useEffect(() => {
     if (selectedClinic) {
       fetchVendors();
     }
-  });
+  }, [selectedClinic]);
 
   const fetchVendors = async () => {
     if (!selectedClinic) return;

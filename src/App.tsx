@@ -14,15 +14,14 @@ import UploadClinic from "./pages/UploadClinic";
 import UploadVendor from "./pages/UploadVendor";
 import UploadPharmacy from "./pages/UploadPharmacy";
 import Reports from "./pages/Reports";
-import VendorReports from "./pages/VendorReports";
 import Vendors from "./pages/Vendors";
 import Clinics from "./pages/Clinics";
 import Exceptions from "./pages/Exceptions";
-
 import Employees from "./pages/Employees";
 import DummyData from "./pages/DummyData";
 import VendorReportUpload from "./pages/VendorReportUpload";
 import VendorReportView from "./pages/VendorReportView";
+import VendorReports from "./pages/VendorReports";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
