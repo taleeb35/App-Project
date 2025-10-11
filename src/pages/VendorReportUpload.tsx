@@ -22,10 +22,10 @@ export default function VendorReportUpload() {
 
   // Fetch all vendors
   useEffect(() => {
-    fetchVendors();
-  }, []);
-
+    if (user) fetchVendors();
+  }, [user]);
   const fetchVendors = async () => {
+    if (!user) { setVendors([]); return; }
     try {
       const { data, error } = await supabase
         .from('vendors')
@@ -43,7 +43,6 @@ export default function VendorReportUpload() {
       });
     }
   };
-
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -228,6 +227,18 @@ export default function VendorReportUpload() {
         <p className="text-muted-foreground">Upload monthly vendor reports for patient medicine purchases</p>
       </div>
 
+      {!user && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Preview mode</CardTitle>
+            <CardDescription>Sign in to enable data and uploads.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <a href="/auth"><Button>Go to Login</Button></a>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -289,7 +300,7 @@ export default function VendorReportUpload() {
           <div className="pt-4">
             <Button
               onClick={handleUpload}
-              disabled={!selectedVendor || !reportMonth || !uploadFile || uploading}
+              disabled={!selectedVendor || !reportMonth || !uploadFile || uploading || !user}
               className="w-full"
             >
               {uploading ? (
