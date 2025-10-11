@@ -102,11 +102,14 @@ export default function VendorReportUpload() {
       const excelData = await parseExcelFile(uploadFile) as any[];
       
       // Expected format: First few rows are headers, then patient data
-      // Find where patient data starts (after "Patient Name" header)
+      // Find where patient data starts (after "Patient Initials" or "Affliate" header)
       let dataStartIndex = -1;
       for (let i = 0; i < excelData.length; i++) {
         const row = excelData[i];
-        if (row.some((cell: any) => typeof cell === 'string' && cell.toLowerCase().includes('patient name'))) {
+        if (row.some((cell: any) => typeof cell === 'string' && 
+            (cell.toLowerCase().includes('patient initials') || 
+             cell.toLowerCase().includes('affliate') ||
+             cell.toLowerCase().includes('affiliate')))) {
           dataStartIndex = i + 1;
           break;
         }
