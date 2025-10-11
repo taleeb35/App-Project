@@ -54,7 +54,6 @@ export default function Dashboard() {
       const vendorsRes = await sb
         .from('vendors')
         .select('id')
-        .eq('clinic_id', selectedClinic.id)
         .eq('status', 'active');
 
       const reportsRes = await sb
