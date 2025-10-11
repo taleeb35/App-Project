@@ -35,7 +35,6 @@ const navigationItems = [
     items: [
       { title: "Manage Clinics", url: "/clinics", icon: Building2 },
       { title: "Clinic Employees", url: "/employees", icon: Users },
-      { title: "Dummy Data", url: "/dummy-data", icon: TestTube },
     ],
   },
   {
@@ -50,7 +49,8 @@ const navigationItems = [
     title: "Vendors",
     items: [
       { title: "Manage Vendors", url: "/vendors", icon: Package },
-      { title: "Upload Vendor Data", url: "/upload/vendor", icon: FileUp },
+      { title: "Upload Vendor Report", url: "/vendors/upload", icon: FileUp },
+      { title: "View Vendor Reports", url: "/vendors/reports-view", icon: FileUp },
     ],
   },
 ];
