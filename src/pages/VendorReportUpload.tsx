@@ -9,11 +9,13 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { Upload, FileSpreadsheet, Calendar } from 'lucide-react';
 import { useClinic } from '@/contexts/ClinicContext';
+import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
 
 export default function VendorReportUpload() {
   const { toast } = useToast();
   const { selectedClinic } = useClinic();
+  const { user } = useAuth();
   const [selectedVendor, setSelectedVendor] = useState('');
   const [reportMonth, setReportMonth] = useState('');
   const [uploadFile, setUploadFile] = useState<File | null>(null);
