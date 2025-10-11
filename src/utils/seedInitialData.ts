@@ -1,4 +1,4 @@
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Seed initial data: Avail HQ clinic and Green Valley Dispensary vendor
