@@ -41,11 +41,12 @@ export default function Dashboard() {
 
       // Fetch all data in one go
       const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+      const sb = supabase as any;
       
       const [patientsRes, vendorsRes, reportsRes] = await Promise.all([
-        supabase.from('patients').select('id, status').eq('clinic_id', selectedClinic.id),
-        supabase.from('vendors').select('id').eq('clinic_id', selectedClinic.id).eq('status', 'active'),
-        supabase.from('vendor_reports').select('id').eq('clinic_id', selectedClinic.id).gte('report_month', currentMonth)
+        sb.from('patients').select('id, status').eq('clinic_id', selectedClinic.id),
+        sb.from('vendors').select('id').eq('clinic_id', selectedClinic.id).eq('status', 'active'),
+        sb.from('vendor_reports').select('id').eq('clinic_id', selectedClinic.id).gte('report_month', currentMonth)
       ]);
 
       const totalPatients = patientsRes.data?.length || 0;
