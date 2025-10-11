@@ -32,13 +32,6 @@ const navigationItems = [
     ],
   },
   {
-    title: "Clinics",
-    items: [
-      { title: "Manage Clinics", url: "/clinics", icon: Building2 },
-      { title: "Clinic Employees", url: "/employees", icon: Users },
-    ],
-  },
-  {
     title: "Patient Management",
     items: [
       { title: "Patient Database", url: "/patients", icon: DatabaseIcon },

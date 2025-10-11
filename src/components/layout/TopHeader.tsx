@@ -3,37 +3,17 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, Settings, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate, useLocation } from "react-router-dom";
-import { VendorSelector } from "@/components/VendorSelector";
-import { useVendor } from "@/contexts/VendorContext";
-import { supabase } from "@/lib/supabase";
+import { useNavigate } from "react-router-dom";
 
 export function TopHeader() {
   const notifications = 3;
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { selectedVendor, setSelectedVendor } = useVendor();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/auth');
   };
-
-  const handleVendorChange = async (vendorId: string) => {
-    const { data } = await supabase
-      .from('vendors')
-      .select('id, name')
-      .eq('id', vendorId)
-      .single();
-    
-    if (data) {
-      setSelectedVendor(data);
-    }
-  };
-
-  // Show vendor selector only on vendor-related pages
-  const isVendorPage = location.pathname.startsWith('/vendors/');
 
   return (
     <header className="h-16 border-b bg-card flex items-center justify-between px-6">
@@ -47,13 +27,6 @@ export function TopHeader() {
       </div>
 
       <div className="flex items-center gap-4">
-        {isVendorPage && (
-          <VendorSelector 
-            value={selectedVendor?.id} 
-            onChange={handleVendorChange}
-          />
-        )}
-
         {/* Header Actions */}
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="sm" className="relative">
