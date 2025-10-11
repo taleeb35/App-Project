@@ -10,13 +10,17 @@ import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/layout/AdminLayout';
 
 interface PatientRow {
-  Name?: string;
-  DOB?: string;
-  'K Number'?: string;
-  Phone?: string;
-  Email?: string;
-  'Prescription Status'?: string;
-  Vendors?: string;
+  name?: string;
+  first_name?: string;
+  last_name?: string;
+  date_of_birth?: string;
+  dob?: string;
+  k_number?: string;
+  phone?: string;
+  email?: string;
+  prescription_status?: string;
+  status?: string;
+  is_veteran?: string | boolean;
 }
 
 export default function UploadPatients() {
@@ -29,7 +33,6 @@ export default function UploadPatients() {
     errors: string[];
   } | null>(null);
   const { toast } = useToast();
-  const { user } = useAuth();
   const { selectedClinic } = useClinic();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,23 +130,28 @@ export default function UploadPatients() {
         const rowNum = i + 2; // Excel row number (accounting for header)
 
         try {
-          if (!row.Name || !row['K Number']) {
-            errors.push(`Row ${rowNum}: Missing required fields (Name or K Number)`);
+          // Handle different column name formats
+          const fullName = row.name || (row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : '');
+          const patientNumber = row.k_number?.toString().trim();
+          
+          if (!fullName || !patientNumber) {
+            errors.push(`Row ${rowNum}: Missing required fields (name and k_number)`);
             continue;
           }
 
-          const { firstName, lastName } = parseName(row.Name);
-          const kNumber = row['K Number'].toString().trim();
-          const dob = row.DOB ? parseDate(row.DOB.toString()) : null;
+          const { firstName, lastName } = row.first_name && row.last_name 
+            ? { firstName: row.first_name, lastName: row.last_name }
+            : parseName(fullName);
+          
+          const dobValue = row.date_of_birth || row.dob;
+          const dob = dobValue ? parseDate(dobValue.toString()) : null;
 
-          // Check for duplicate based on K number (patient_number) and name
+          // Check for duplicate based on patient_number and clinic
           const { data: existingPatients, error: checkError } = await supabase
             .from('patients')
             .select('id')
             .eq('clinic_id', selectedClinic.id)
-            .eq('patient_number', kNumber)
-            .eq('first_name', firstName)
-            .eq('last_name', lastName);
+            .eq('patient_number', patientNumber);
 
           if (checkError) throw checkError;
 
@@ -157,12 +165,12 @@ export default function UploadPatients() {
             .from('patients')
             .insert({
               clinic_id: selectedClinic.id,
-              patient_number: kNumber,
+              patient_number: patientNumber,
               first_name: firstName,
               last_name: lastName,
               date_of_birth: dob,
-              phone: row.Phone?.toString().trim() || null,
-              email: row.Email?.toString().trim() || null,
+              phone: row.phone?.toString().trim() || null,
+              email: row.email?.toString().trim() || null,
               status: 'active',
             });
 
@@ -206,17 +214,22 @@ export default function UploadPatients() {
   return (
     <AdminLayout>
       <div className="container mx-auto py-8 px-4">
-        <h1 className="text-3xl font-bold mb-6">Upload Patients List</h1>
+        <h1 className="text-3xl font-bold mb-2">Upload Patient Data</h1>
+        <p className="text-muted-foreground mb-6">Import patient records from Excel file</p>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Upload Excel File</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <span className="text-primary">📄</span>
+              Excel File Upload
+            </CardTitle>
             <CardDescription>
-              Upload an Excel file containing patient information. The system will automatically skip duplicates based on K Number and Name.
+              Upload an Excel file (.xlsx or .xls) containing patient information
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
+              <label className="text-sm font-medium mb-2 block">Select Excel File</label>
               <Input
                 type="file"
                 accept=".xlsx,.xls"
@@ -235,27 +248,23 @@ export default function UploadPatients() {
               disabled={!file || uploading}
               className="w-full"
             >
-              {uploading ? "Uploading..." : "Upload Patients"}
+              {uploading ? "Uploading..." : "Upload Patient Data"}
             </Button>
           </CardContent>
         </Card>
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle>Required Excel Format</CardTitle>
+            <CardTitle>Excel file should contain these columns:</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Your Excel file should contain the following columns:
-            </p>
             <ul className="list-disc list-inside space-y-2 text-sm">
-              <li><strong>Name</strong> (Required) - Full name of the patient</li>
-              <li><strong>DOB</strong> - Date of birth (format: YYYY-MM-DD or Excel date)</li>
-              <li><strong>K Number</strong> (Required) - Unique patient identifier</li>
-              <li><strong>Phone</strong> - Contact phone number</li>
-              <li><strong>Email</strong> - Email address</li>
-              <li><strong>Prescription Status</strong> - Active or Inactive</li>
-              <li><strong>Vendors</strong> - Comma-separated list of vendor names</li>
+              <li><strong>name</strong> (or first_name + last_name) - Patient full name</li>
+              <li><strong>date_of_birth</strong> (or dob) - Date of birth</li>
+              <li><strong>k_number</strong> - Insurance ID for Veterans</li>
+              <li><strong>phone</strong> - Contact phone (optional)</li>
+              <li><strong>email</strong> - Email address (optional)</li>
+              <li><strong>prescription_status</strong> (or status) - Active prescription status (optional, defaults to "active")</li>
             </ul>
           </CardContent>
         </Card>
