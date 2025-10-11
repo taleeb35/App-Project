@@ -173,7 +173,7 @@ export default function UploadClinic() {
               email: row.email || null,
               prescription_status: row.prescription_status || row.status || 'active',
               status: 'active',
-            });
+            } as any);
 
           if (error) {
             errors.push(`Row ${i + 2}: ${error.message}`);
@@ -195,13 +195,13 @@ export default function UploadClinic() {
       });
 
       // Create upload record
-      await supabase.from('data_uploads').insert({
+      await supabase.from('data_uploads' as any).insert({
         clinic_id: selectedClinic.id,
         file_name: file.name,
         upload_type: 'clinic',
         records_count: successful,
         status: failed > 0 ? 'completed_with_errors' : 'completed',
-      });
+      } as any);
 
       toast({
         title: "Upload completed",

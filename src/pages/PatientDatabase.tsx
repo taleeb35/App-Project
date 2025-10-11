@@ -110,7 +110,7 @@ export default function PatientDatabase() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setPatients(data || []);
+      setPatients((data as any) || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -145,7 +145,7 @@ export default function PatientDatabase() {
         clinic_id: formData.clinic_id,
         vendor_id: formData.vendor_id || null,
         status: 'active',
-      });
+      } as any);
 
       if (error) throw error;
 

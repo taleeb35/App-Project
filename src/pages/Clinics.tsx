@@ -47,7 +47,7 @@ export default function Clinics() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setClinics(data || []);
+      setClinics((data as any) || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -70,7 +70,7 @@ export default function Clinics() {
     }
 
     try {
-      const { error } = await supabase.from('clinics').insert(formData);
+      const { error } = await supabase.from('clinics').insert(formData as any);
 
       if (error) throw error;
 

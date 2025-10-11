@@ -162,7 +162,7 @@ export default function VendorReportUpload() {
               is_veteran: true,
               vendor_id: selectedVendor, // Link patient to vendor
               preferred_vendor_id: selectedVendor, // Set as preferred vendor
-            })
+            } as any)
             .select()
             .single();
 
@@ -175,7 +175,7 @@ export default function VendorReportUpload() {
             .update({
               vendor_id: selectedVendor,
               preferred_vendor_id: selectedVendor,
-            })
+            } as any)
             .eq('id', patientId);
         }
 

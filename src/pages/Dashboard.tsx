@@ -47,11 +47,12 @@ export default function Dashboard() {
         .select('*', { count: 'exact', head: true })
         .eq('status', 'active');
 
-      // Fetch monthly purchases count
+      // Fetch monthly vendor reports count
+      const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
       const { count: monthlyOrders } = await supabase
-        .from('patient_purchases')
+        .from('vendor_reports')
         .select('*', { count: 'exact', head: true })
-        .gte('purchase_date', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+        .gte('report_month', currentMonth);
 
       setStats({
         totalPatients: totalPatients || 0,

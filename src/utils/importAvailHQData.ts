@@ -29,7 +29,7 @@ export async function importAvailHQData() {
           phone: '555-0100',
           email: 'contact@availhq.com',
           address: 'Main Street, HQ City',
-        })
+        } as any)
         .select()
         .single();
 
@@ -102,7 +102,7 @@ export async function importAvailHQData() {
             k_number: `K${Date.now()}${Math.floor(Math.random() * 1000)}`,
             prescription_status: 'active',
             is_veteran: true,
-          })
+          } as any)
           .select()
           .single();
 
@@ -125,7 +125,7 @@ export async function importAvailHQData() {
           product_name: 'Medical Cannabis',
           grams_sold: patientData.grams,
           amount: patientData.amount,
-        });
+        } as any);
 
       if (reportError) {
         console.error(`Error creating report for ${patientData.name}:`, reportError);

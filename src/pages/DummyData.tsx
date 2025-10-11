@@ -29,7 +29,6 @@ export default function DummyData() {
         {
           name: 'Green Valley Dispensary',
           clinic_id: selectedClinic.id,
-          license_number: 'VL-2024-001',
           contact_person: 'John Smith',
           email: 'john@greenvalley.com',
           phone: '555-0101',
@@ -38,7 +37,6 @@ export default function DummyData() {
         {
           name: 'Healing Herbs Co.',
           clinic_id: selectedClinic.id,
-          license_number: 'VL-2024-002',
           contact_person: 'Jane Doe',
           email: 'jane@healingherbs.com',
           phone: '555-0102',
@@ -47,7 +45,6 @@ export default function DummyData() {
         {
           name: 'Natural Wellness Center',
           clinic_id: selectedClinic.id,
-          license_number: 'VL-2024-003',
           contact_person: 'Bob Johnson',
           email: 'bob@naturalwellness.com',
           phone: '555-0103',
@@ -57,7 +54,7 @@ export default function DummyData() {
 
       const { data: vendors, error: vendorError } = await supabase
         .from('vendors')
-        .insert(vendorsToInsert)
+        .insert(vendorsToInsert as any)
         .select();
 
       if (vendorError) throw vendorError;
@@ -102,7 +99,7 @@ export default function DummyData() {
             is_veteran: true,
             is_dummy: true,
           },
-        ])
+        ] as any)
         .select();
 
       if (patientError) throw patientError;
@@ -153,10 +150,9 @@ export default function DummyData() {
     setLoading(true);
     try {
       // Delete in reverse order due to foreign key constraints
-      await supabase.from('vendor_reports').delete().match({ is_dummy: true });
-      await supabase.from('patient_vendor_usage').delete().match({ is_dummy: true });
-      await supabase.from('patients').delete().match({ is_dummy: true });
-      await supabase.from('vendors').delete().match({ is_dummy: true });
+      await supabase.from('vendor_reports' as any).delete().eq('is_dummy', true);
+      await supabase.from('patients' as any).delete().eq('is_dummy', true);
+      await supabase.from('vendors' as any).delete().eq('is_dummy', true);
 
       toast({
         title: 'Success',

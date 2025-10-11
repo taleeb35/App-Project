@@ -9,6 +9,8 @@ type Clinic = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
 type ClinicContextType = {
@@ -39,11 +41,11 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
 
       if (error) throw error;
       
-      setClinics(data || []);
+      setClinics((data as any) || []);
       
       // Auto-select first clinic if none selected
       if (data && data.length > 0 && !selectedClinic) {
-        setSelectedClinic(data[0]);
+        setSelectedClinic(data[0] as any);
       }
     } catch (error: any) {
       toast({

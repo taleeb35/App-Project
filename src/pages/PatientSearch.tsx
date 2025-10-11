@@ -67,17 +67,23 @@ export default function PatientSearch() {
         return;
       }
 
-      setPatient(patientData);
+      setPatient(patientData as any);
 
-      // Fetch patient purchases
-      const { data: purchasesData, error: purchasesError } = await supabase
-        .from('patient_purchases')
+      // Fetch patient purchases from vendor reports
+      const { data: purchasesData, error: purchasesError} = await supabase
+        .from('vendor_reports' as any)
         .select('*')
         .eq('patient_id', patientData.id)
-        .order('purchase_date', { ascending: false });
+        .order('report_month', { ascending: false });
 
       if (purchasesError) throw purchasesError;
-      setPurchases(purchasesData || []);
+      setPurchases((purchasesData || []).map((r: any) => ({
+        id: r.id,
+        purchase_date: r.report_month,
+        amount: r.amount || 0,
+        grams: r.grams_sold,
+        product_type: r.product_name
+      })));
 
       toast({
         title: "Success",

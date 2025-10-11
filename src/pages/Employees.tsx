@@ -67,7 +67,7 @@ export default function Employees() {
     try {
       // First get clinic employees with clinic info
       const { data: employeesData, error: employeesError } = await supabase
-        .from('clinic_employees')
+        .from('clinic_employees' as any)
         .select(`
           id,
           user_id,
@@ -78,16 +78,16 @@ export default function Employees() {
       if (employeesError) throw employeesError;
 
       // Get user profiles separately
-      const userIds = employeesData?.map(emp => emp.user_id) || [];
+      const userIds = employeesData?.map((emp: any) => emp.user_id) || [];
       const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
+        .from('profiles' as any)
         .select('id, email, full_name')
         .in('id', userIds);
 
       if (profilesError) throw profilesError;
 
       // Map profiles to employees
-      const profilesMap = new Map(profilesData?.map(p => [p.id, p]) || []);
+      const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
 
       const formattedEmployees = employeesData?.map((emp: any) => {
         const profile = profilesMap.get(emp.user_id);
@@ -142,7 +142,7 @@ export default function Employees() {
 
       // Update profile with clinic_id
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from('profiles' as any)
         .update({ clinic_id: newEmployee.clinicId })
         .eq('id', authData.user.id);
 
@@ -150,11 +150,11 @@ export default function Employees() {
 
       // Create clinic employee assignment
       const { error: assignError } = await supabase
-        .from('clinic_employees')
+        .from('clinic_employees' as any)
         .insert({
           user_id: authData.user.id,
           clinic_id: newEmployee.clinicId,
-        });
+        } as any);
 
       if (assignError) throw assignError;
 
@@ -182,7 +182,7 @@ export default function Employees() {
 
     try {
       const { error } = await supabase
-        .from('clinic_employees')
+        .from('clinic_employees' as any)
         .delete()
         .eq('id', employeeId);
 

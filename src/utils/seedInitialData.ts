@@ -23,7 +23,7 @@ export async function seedInitialData() {
           phone: '555-0100',
           email: 'contact@availhq.com',
           address: 'Main Street, HQ City',
-        });
+        } as any);
 
       if (clinicError) {
         console.error('Error creating Avail HQ clinic:', clinicError);
@@ -51,7 +51,7 @@ export async function seedInitialData() {
           email: 'contact@greenvalley.com',
           address: '123 Green Valley Road',
           status: 'active',
-        });
+        } as any);
 
       if (vendorError) {
         console.error('Error creating Green Valley Dispensary:', vendorError);

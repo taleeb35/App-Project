@@ -51,7 +51,7 @@ export default function Vendors() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setVendors(data || []);
+      setVendors((data as any) || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -68,7 +68,7 @@ export default function Vendors() {
       const { error } = await supabase.from('vendors').insert({
         ...formData,
         status: 'active',
-      });
+      } as any);
 
       if (error) throw error;
 

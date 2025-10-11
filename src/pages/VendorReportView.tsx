@@ -68,7 +68,7 @@ export default function VendorReportView() {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('vendor_reports')
+        .from('vendor_reports' as any)
         .select(`
           *,
           vendors (name),
