@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
 import { VendorSelector } from "@/components/VendorSelector";
 import { useVendor } from "@/contexts/VendorContext";
-import { supabase } from "@/lib/supabase";
+import { supabase } from "@/integrations/supabase/client";
 
 export function TopHeader() {
   const notifications = 3;
