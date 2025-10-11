@@ -39,15 +39,26 @@ export default function Dashboard() {
         return;
       }
 
-      // Fetch all data in one go
+      // Fetch all data with simplified sequential calls
       const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
       const sb = supabase as any;
-      
-      const [patientsRes, vendorsRes, reportsRes] = await Promise.all([
-        sb.from('patients').select('id, status').eq('clinic_id', selectedClinic.id),
-        sb.from('vendors').select('id').eq('clinic_id', selectedClinic.id).eq('status', 'active'),
-        sb.from('vendor_reports').select('id').eq('clinic_id', selectedClinic.id).gte('report_month', currentMonth)
-      ]);
+
+      const patientsRes = await sb
+        .from('patients')
+        .select('id, status')
+        .eq('clinic_id', selectedClinic.id);
+
+      const vendorsRes = await sb
+        .from('vendors')
+        .select('id')
+        .eq('clinic_id', selectedClinic.id)
+        .eq('status', 'active');
+
+      const reportsRes = await sb
+        .from('vendor_reports')
+        .select('id')
+        .eq('clinic_id', selectedClinic.id)
+        .gte('report_month', currentMonth);
 
       const totalPatients = patientsRes.data?.length || 0;
       const activePatients = patientsRes.data?.filter((p: any) => p.status === 'active').length || 0;
