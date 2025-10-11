@@ -13,6 +13,7 @@ import PatientSearch from "./pages/PatientSearch";
 import UploadClinic from "./pages/UploadClinic";
 import UploadVendor from "./pages/UploadVendor";
 import UploadPharmacy from "./pages/UploadPharmacy";
+import UploadPatients from "./pages/UploadPatients";
 import Reports from "./pages/Reports";
 import Vendors from "./pages/Vendors";
 import Clinics from "./pages/Clinics";
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/upload/clinic" element={<ProtectedRoute><AdminLayout><UploadClinic /></AdminLayout></ProtectedRoute>} />
             <Route path="/upload/vendor" element={<ProtectedRoute><AdminLayout><UploadVendor /></AdminLayout></ProtectedRoute>} />
             <Route path="/upload/pharmacy" element={<ProtectedRoute><AdminLayout><UploadPharmacy /></AdminLayout></ProtectedRoute>} />
+            <Route path="/upload/patients" element={<ProtectedRoute><UploadPatients /></ProtectedRoute>} />
             <Route path="/vendors" element={<ProtectedRoute><AdminLayout><Vendors /></AdminLayout></ProtectedRoute>} />
             <Route path="/clinics" element={<ProtectedRoute><AdminLayout><Clinics /></AdminLayout></ProtectedRoute>} />
             <Route path="/vendors/reports" element={<ProtectedRoute><AdminLayout><VendorReports /></AdminLayout></ProtectedRoute>} />
