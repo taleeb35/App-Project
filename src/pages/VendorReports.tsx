@@ -50,49 +50,6 @@ export default function VendorReports() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>How It Works</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
-              1
-            </div>
-            <div>
-              <h3 className="font-semibold">Vendor Provides Physical Report</h3>
-              <p className="text-sm text-muted-foreground">
-                Each vendor provides a monthly Excel report showing which patients purchased medicine from them
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
-              2
-            </div>
-            <div>
-              <h3 className="font-semibold">Admin Uploads Report</h3>
-              <p className="text-sm text-muted-foreground">
-                Admin selects the vendor, month, and uploads the Excel file. The system automatically creates patient records if needed
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-4">
-            <div className="flex-shrink-0 w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
-              3
-            </div>
-            <div>
-              <h3 className="font-semibold">View & Analyze Reports</h3>
-              <p className="text-sm text-muted-foreground">
-                Reports can be filtered by month, vendor, or patient. Track total grams sold and revenue over time
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

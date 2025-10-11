@@ -63,7 +63,13 @@ export function AppSidebar() {
 
   const isActive = (path: string) => {
     if (path === "/" && currentPath === "/") return true;
-    if (path !== "/" && currentPath.startsWith(path)) return true;
+    if (path !== "/") {
+      // Exact match for vendor reports to avoid highlighting both tabs
+      if (path === "/vendors/reports") {
+        return currentPath === path || currentPath.startsWith(path + "/");
+      }
+      return currentPath === path || (currentPath.startsWith(path) && !currentPath.includes("/reports"));
+    }
     return false;
   };
 
