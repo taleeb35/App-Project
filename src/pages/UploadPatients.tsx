@@ -93,7 +93,7 @@ export default function UploadPatients() {
   };
 
 const parseDate = (dateStr: string | number): string | null => {
-  if (dateStr === undefined || dateStr === null || dateStr === ('' as any)) return null;
+  if (dateStr === undefined || dateStr === null || (dateStr as any) === '') return null;
   try {
     // Handle Excel serial date or string date
     if (typeof dateStr === 'number') {
@@ -107,6 +107,19 @@ const parseDate = (dateStr: string | number): string | null => {
   } catch {
     return null;
   }
+};
+
+// Normalize header keys from Excel to be resilient to casing, spaces and symbols
+const normalizeKey = (key: string) =>
+  key?.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+const normalizeRow = (row: Record<string, unknown>) => {
+  const map: Record<string, unknown> = {};
+  Object.entries(row).forEach(([k, v]) => {
+    if (!k) return;
+    map[normalizeKey(k)] = v;
+  });
+  return map;
 };
 
   const handleUpload = async () => {
@@ -141,28 +154,31 @@ const parseDate = (dateStr: string | number): string | null => {
         const rowNum = i + 2; // Excel row number (accounting for header)
 
         try {
-          // Normalize values from multiple possible header names
-          const fullName = row.name || (row.first_name && row.last_name ? `${row.first_name} ${row.last_name}` : row.Name || '');
-          const patientNumber = (row.k_number || row['K Number'])?.toString().trim();
-          
-          if (!fullName || !patientNumber) {
+          // Normalize and map from flexible headers
+          const map = normalizeRow(row as any);
+
+          const fullNameRaw = (map['name'] ?? map['patientname'] ?? map['fullname'] ?? '') as string;
+          const hasFirstLast = map['firstname'] && map['lastname'];
+          const kNumber = (map['knumber'] ?? map['kid'] ?? map['kno']) as string | undefined;
+
+          if ((!fullNameRaw && !hasFirstLast) || !kNumber) {
             errors.push(`Row ${rowNum}: Missing required fields (Name and K Number)`);
             continue;
           }
 
-          const { firstName, lastName } = row.first_name && row.last_name 
-            ? { firstName: row.first_name, lastName: row.last_name }
-            : parseName(fullName);
-          
-          const dobRaw = (row.date_of_birth ?? row.dob ?? row.DOB) as string | number | undefined;
+          const { firstName, lastName } = hasFirstLast
+            ? { firstName: String(map['firstname'] || '').trim(), lastName: String(map['lastname'] || '').trim() }
+            : parseName(String(fullNameRaw));
+
+          const dobRaw = (map['dob'] ?? map['dateofbirth']) as string | number | undefined;
           const dob = dobRaw !== undefined ? parseDate(dobRaw) : null;
 
-          // Check for duplicate based on patient_number and clinic
-          const { data: existingPatients, error: checkError } = await supabase
+          // Check for duplicate based on k_number and clinic
+          const { data: existingPatients, error: checkError } = await (supabase as any)
             .from('patients')
             .select('id')
             .eq('clinic_id', selectedClinic.id)
-            .eq('patient_number', patientNumber);
+            .eq('k_number', String(kNumber).trim());
 
           if (checkError) throw checkError;
 
@@ -172,22 +188,27 @@ const parseDate = (dateStr: string | number): string | null => {
           }
 
           // Map prescription status to patient.status
-          const rxStatusRaw = (row.prescription_status || row.status || row['Prescription Status'] || 'active').toString().toLowerCase();
+          const rxStatusRaw = String(map['prescriptionstatus'] ?? map['status'] ?? 'active').toLowerCase();
           const patientStatus = rxStatusRaw === 'inactive' ? 'inactive' : 'active';
 
+          const phone = map['phone'] ? String(map['phone']).trim() : null;
+          const email = map['email'] ? String(map['email']).trim() : null;
+
           // Insert new patient
-          const { error: insertError } = await supabase
+          const { error: insertError } = await (supabase as any)
             .from('patients')
-            .insert({
-              clinic_id: selectedClinic.id,
-              patient_number: patientNumber,
-              first_name: firstName,
-              last_name: lastName,
-              date_of_birth: dob,
-              phone: (row.phone || row.Phone)?.toString().trim() || null,
-              email: (row.email || row.Email)?.toString().trim() || null,
-              status: patientStatus,
-            });
+            .insert([
+              {
+                clinic_id: selectedClinic.id,
+                k_number: String(kNumber).trim(),
+                first_name: firstName,
+                last_name: lastName,
+                date_of_birth: dob,
+                phone,
+                email,
+                status: patientStatus,
+              } as any
+            ]);
 
           if (insertError) throw insertError;
 
@@ -273,16 +294,16 @@ const parseDate = (dateStr: string | number): string | null => {
             <CardTitle>Excel file should contain these columns:</CardTitle>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc list-inside space-y-2 text-sm">
-              <li><strong>Name</strong> (or first_name + last_name) – Patient full name</li>
-              <li><strong>DOB</strong> (or date_of_birth / dob) – Date of birth</li>
-              <li><strong>K Number</strong> (or k_number) – Unique patient number</li>
-              <li><strong>Phone</strong> (or phone) – Contact phone (optional)</li>
-              <li><strong>Email</strong> (or email) – Email address (optional)</li>
-              <li><strong>Prescription Status</strong> (or prescription_status/status) – active/inactive (optional, defaults to "active")</li>
-              <li><strong>Vendors</strong> – Comma-separated vendor names (optional)</li>
-              <li><strong>Type</strong> – Veterans or Civilians (optional)</li>
-            </ul>
+              <ul className="list-disc list-inside space-y-2 text-sm">
+                <li><strong>Name</strong> – Patient full name</li>
+                <li><strong>DOB</strong> – Date of birth (YYYY-MM-DD or Excel date)</li>
+                <li><strong>K Number</strong> – Insurance ID for Veterans</li>
+                <li><strong>Phone</strong> – Contact phone (optional)</li>
+                <li><strong>Email</strong> – Email address (optional)</li>
+                <li><strong>Prescription Status</strong> – active/inactive (optional, defaults to "active")</li>
+                <li><strong>Vendors</strong> – Comma-separated vendor names (optional)</li>
+                <li><strong>Type</strong> – Veterans or Civilians (optional)</li>
+              </ul>
           </CardContent>
         </Card>
 
