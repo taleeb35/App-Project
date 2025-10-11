@@ -120,19 +120,20 @@ export default function VendorReportUpload() {
       const patientRecords: any[] = [];
       for (let i = dataStartIndex; i < excelData.length; i++) {
         const row = excelData[i];
-        if (!row || row.length === 0 || !row[0]) continue;
+        if (!row || row.length === 0) continue;
 
-        const patientName = String(row[0] || '').trim();
-        if (!patientName) continue;
+        // Excel structure: Affiliate, Patient ID, Patient Initials, Gross sales, Excise, Net Sales, Education Fee
+        const patientInitials = String(row[2] || '').trim();
+        if (!patientInitials || patientInitials.toLowerCase() === 'patient initials') continue;
 
-        // Split name into first and last
-        const nameParts = patientName.split(' ');
+        // Convert initials like "K. Hall" to "K Hall" for first/last name
+        const nameParts = patientInitials.replace(/\./g, '').split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || nameParts[0];
 
-        // Extract grams and amount from appropriate columns
-        const grams = parseFloat(row[1] || 0);
-        const amount = parseFloat(row[2] || 0);
+        // Extract financial data from appropriate columns
+        const grossSales = parseFloat(row[3] || 0);
+        const netSales = parseFloat(row[5] || 0);
 
         // First, check if patient exists
         const { data: existingPatient } = await supabase
@@ -145,7 +146,7 @@ export default function VendorReportUpload() {
 
         let patientId = existingPatient?.id;
 
-        // If patient doesn't exist, create them
+        // If patient doesn't exist, create them and link to vendor
         if (!patientId) {
           const { data: newPatient, error: patientError } = await supabase
             .from('patients')
@@ -153,15 +154,26 @@ export default function VendorReportUpload() {
               clinic_id: selectedClinic.id,
               first_name: firstName,
               last_name: lastName,
-              k_number: `K${Date.now()}${Math.floor(Math.random() * 1000)}`, // Generate temp K number
+              k_number: `K${Date.now()}${Math.floor(Math.random() * 1000)}`,
               prescription_status: 'active',
               is_veteran: true,
+              vendor_id: selectedVendor, // Link patient to vendor
+              preferred_vendor_id: selectedVendor, // Set as preferred vendor
             })
             .select()
             .single();
 
           if (patientError) throw patientError;
           patientId = newPatient.id;
+        } else {
+          // If patient exists, update their vendor link
+          await supabase
+            .from('patients')
+            .update({
+              vendor_id: selectedVendor,
+              preferred_vendor_id: selectedVendor,
+            })
+            .eq('id', patientId);
         }
 
         // Create vendor report record
@@ -171,8 +183,8 @@ export default function VendorReportUpload() {
           patient_id: patientId,
           report_month: reportMonth + '-01',
           product_name: 'Medical Cannabis',
-          grams_sold: grams,
-          amount: amount,
+          grams_sold: 0, // Not in this report format
+          amount: netSales,
         });
       }
 
@@ -299,9 +311,10 @@ export default function VendorReportUpload() {
         <CardContent className="space-y-2">
           <p className="text-sm text-muted-foreground">Your Excel file should contain:</p>
           <ul className="list-disc list-inside space-y-1 text-sm text-muted-foreground">
-            <li>Column with "Patient Name" header</li>
-            <li>Column with grams/quantity data</li>
-            <li>Column with amount/price data</li>
+            <li>Affiliate column (clinic name)</li>
+            <li>Patient ID column</li>
+            <li>Patient Initials column (e.g., "K. Hall")</li>
+            <li>Gross sales, Excise, Net Sales, Education Fee columns</li>
             <li>One row per patient purchase</li>
           </ul>
         </CardContent>

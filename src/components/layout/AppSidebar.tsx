@@ -53,12 +53,6 @@ const navigationItems = [
       { title: "Vendor Reports", url: "/vendors/reports", icon: FileUp },
     ],
   },
-  {
-    title: "Data Management",
-    items: [
-      { title: "Import Data", url: "/import-data", icon: Download },
-    ],
-  },
 ];
 
 export function AppSidebar() {

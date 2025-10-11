@@ -1,13 +1,20 @@
+import { useEffect } from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/layout/AppSidebar";
 import { TopHeader } from "@/components/layout/TopHeader";
 import { ClinicProvider } from "@/contexts/ClinicContext";
+import { seedInitialData } from "@/utils/seedInitialData";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
+  useEffect(() => {
+    // Seed initial data on first load
+    seedInitialData();
+  }, []);
+
   return (
     <ClinicProvider>
       <SidebarProvider>
