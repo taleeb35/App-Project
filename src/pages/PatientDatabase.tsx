@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Download, Filter, Plus, Edit, Trash2 } from "lucide-react";
+import { Users, Search, Download, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -49,6 +49,8 @@ export default function PatientDatabase() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     first_name: "",
     last_name: "",
@@ -287,10 +289,17 @@ export default function PatientDatabase() {
     return matchesSearch && matchesStatus;
   });
 
+  // Pagination
+  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+
   const stats = {
     total: patients.length,
     active: patients.filter(p => p.status === 'active').length,
     veterans: patients.filter(p => p.is_veteran).length,
+    civilians: patients.filter(p => !p.is_veteran).length,
   };
 
   return (
@@ -454,6 +463,17 @@ export default function PatientDatabase() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Civilians</CardTitle>
+            <Badge className="h-4 w-4 text-muted" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats.civilians}</div>
+            <p className="text-xs text-muted-foreground">{stats.total > 0 ? ((stats.civilians / stats.total) * 100).toFixed(1) : 0}% of total</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Status</CardTitle>
             <span className="h-4 w-4 text-success">✓</span>
           </CardHeader>
@@ -504,7 +524,7 @@ export default function PatientDatabase() {
       <Card>
         <CardHeader>
           <CardTitle>Patient Registry</CardTitle>
-          <CardDescription>Showing {filteredPatients.length} of {patients.length} patients</CardDescription>
+          <CardDescription>Showing {startIndex + 1}-{Math.min(endIndex, filteredPatients.length)} of {filteredPatients.length} patients</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -512,77 +532,102 @@ export default function PatientDatabase() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Patient Name</TableHead>
-                  <TableHead>K Number</TableHead>
-                  <TableHead>DOB</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Veteran</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredPatients.length === 0 ? (
+            <>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No patients found
-                    </TableCell>
+                    <TableHead>Patient Name</TableHead>
+                    <TableHead>K Number</TableHead>
+                    <TableHead>DOB</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Veteran</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  filteredPatients.map((patient) => (
-                    <TableRow key={patient.id}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium text-foreground">{patient.first_name} {patient.last_name}</p>
-                          {patient.email && <p className="text-sm text-muted-foreground">{patient.email}</p>}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{patient.date_of_birth || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{patient.phone || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
-                          {patient.status || 'unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={patient.is_veteran ? 'default' : 'outline'}>
-                          {patient.is_veteran ? 'Yes' : 'No'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditPatient(patient)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeletePatient(patient.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {paginatedPatients.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        No patients found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    paginatedPatients.map((patient) => (
+                      <TableRow key={patient.id}>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{patient.first_name} {patient.last_name}</p>
+                            {patient.email && <p className="text-sm text-muted-foreground">{patient.email}</p>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{patient.date_of_birth || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{patient.phone || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={patient.is_veteran ? 'default' : 'outline'}>
+                            {patient.is_veteran ? 'Yes' : 'No'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditPatient(patient)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeletePatient(patient.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Previous
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

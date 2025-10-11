@@ -24,6 +24,8 @@ export default function Dashboard() {
   const [stats, setStats] = useState({
     totalPatients: 0,
     activePatients: 0,
+    veterans: 0,
+    civilians: 0,
     activeVendors: 0,
     monthlyOrders: 0,
     exceptions: 0,
@@ -46,7 +48,7 @@ export default function Dashboard() {
 
       const patientsRes = await sb
         .from('patients')
-        .select('id, status')
+        .select('id, status, is_veteran')
         .eq('clinic_id', selectedClinic.id);
 
       const vendorsRes = await sb
@@ -63,10 +65,14 @@ export default function Dashboard() {
 
       const totalPatients = patientsRes.data?.length || 0;
       const activePatients = patientsRes.data?.filter((p: any) => p.status === 'active').length || 0;
+      const veterans = patientsRes.data?.filter((p: any) => p.is_veteran).length || 0;
+      const civilians = totalPatients - veterans;
 
       setStats({
         totalPatients,
         activePatients,
+        veterans,
+        civilians,
         activeVendors: vendorsRes.data?.length || 0,
         monthlyOrders: reportsRes.data?.length || 0,
         exceptions: 0,
@@ -91,25 +97,25 @@ export default function Dashboard() {
       color: "text-primary",
     },
     {
+      title: "Veterans",
+      value: stats.veterans.toString(),
+      subtitle: `${stats.totalPatients > 0 ? ((stats.veterans / stats.totalPatients) * 100).toFixed(1) : 0}% of total`,
+      icon: UserCheck,
+      color: "text-accent",
+    },
+    {
+      title: "Civilians",
+      value: stats.civilians.toString(),
+      subtitle: `${stats.totalPatients > 0 ? ((stats.civilians / stats.totalPatients) * 100).toFixed(1) : 0}% of total`,
+      icon: Users,
+      color: "text-muted-foreground",
+    },
+    {
       title: "Active Vendors",
       value: stats.activeVendors.toString(),
       subtitle: "Registered",
       icon: Building2,
-      color: "text-accent",
-    },
-    {
-      title: "Monthly Orders",
-      value: stats.monthlyOrders.toLocaleString(),
-      subtitle: "This month",
-      icon: Pill,
       color: "text-success",
-    },
-    {
-      title: "Exceptions",
-      value: stats.exceptions.toString(),
-      subtitle: "Need review",
-      icon: AlertTriangle,
-      color: "text-warning",
     },
   ];
 
