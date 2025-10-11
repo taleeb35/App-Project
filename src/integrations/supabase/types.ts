@@ -7,279 +7,356 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.5"
   }
   public: {
     Tables: {
-      clinic_employees: {
+      audit_logs: {
         Row: {
-          clinic_id: string
-          created_at: string | null
           id: string
-          user_id: string
+          user_id: string | null
+          action: string
+          entity_type: string | null
+          entity_id: string | null
+          old_data: Json | null
+          new_data: Json | null
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
         }
         Insert: {
-          clinic_id: string
-          created_at?: string | null
           id?: string
-          user_id: string
+          user_id?: string | null
+          action: string
+          entity_type?: string | null
+          entity_id?: string | null
+          old_data?: Json | null
+          new_data?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
         }
         Update: {
-          clinic_id?: string
-          created_at?: string | null
           id?: string
-          user_id?: string
+          user_id?: string | null
+          action?: string
+          entity_type?: string | null
+          entity_id?: string | null
+          old_data?: Json | null
+          new_data?: Json | null
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
+      clinic_vendors: {
+        Row: {
+          id: string
+          clinic_id: string
+          vendor_id: string
+          relationship_start_date: string | null
+          relationship_end_date: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          clinic_id: string
+          vendor_id: string
+          relationship_start_date?: string | null
+          relationship_end_date?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          clinic_id?: string
+          vendor_id?: string
+          relationship_start_date?: string | null
+          relationship_end_date?: string | null
+          is_active?: boolean
+          created_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "clinic_employees_clinic_id_fkey"
+            foreignKeyName: "clinic_vendors_clinic_id_fkey"
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "clinic_vendors_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          }
         ]
       }
       clinics: {
         Row: {
-          address: string | null
-          created_at: string | null
-          email: string | null
           id: string
-          license_number: string | null
           name: string
+          code: string
+          address: string | null
+          city: string | null
+          state: string | null
+          zip_code: string | null
           phone: string | null
-          updated_at: string | null
+          email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          status: string
+          created_at: string
+          updated_at: string
+          created_by: string | null
         }
         Insert: {
-          address?: string | null
-          created_at?: string | null
-          email?: string | null
           id?: string
-          license_number?: string | null
           name: string
+          code: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
           phone?: string | null
-          updated_at?: string | null
+          email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Update: {
-          address?: string | null
-          created_at?: string | null
-          email?: string | null
           id?: string
-          license_number?: string | null
           name?: string
+          code?: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
           phone?: string | null
-          updated_at?: string | null
+          email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Relationships: []
       }
-      data_uploads: {
+      employees: {
         Row: {
-          clinic_id: string | null
-          created_at: string | null
-          file_name: string
           id: string
-          records_count: number | null
-          status: string | null
-          upload_type: string
-          uploaded_by: string | null
+          user_id: string
+          employee_number: string
+          first_name: string
+          last_name: string
+          email: string
+          phone: string | null
+          role: Database["public"]["Enums"]["user_role"]
+          department: string | null
+          hire_date: string | null
+          status: string
+          permissions: Json
+          created_at: string
+          updated_at: string
+          created_by: string | null
         }
         Insert: {
-          clinic_id?: string | null
-          created_at?: string | null
-          file_name: string
           id?: string
-          records_count?: number | null
-          status?: string | null
-          upload_type: string
-          uploaded_by?: string | null
+          user_id: string
+          employee_number: string
+          first_name: string
+          last_name: string
+          email: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          department?: string | null
+          hire_date?: string | null
+          status?: string
+          permissions?: Json
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Update: {
-          clinic_id?: string | null
-          created_at?: string | null
-          file_name?: string
           id?: string
-          records_count?: number | null
-          status?: string | null
-          upload_type?: string
-          uploaded_by?: string | null
+          user_id?: string
+          employee_number?: string
+          first_name?: string
+          last_name?: string
+          email?: string
+          phone?: string | null
+          role?: Database["public"]["Enums"]["user_role"]
+          department?: string | null
+          hire_date?: string | null
+          status?: string
+          permissions?: Json
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "data_uploads_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      patient_purchases: {
+      exceptions: {
         Row: {
-          amount: number
-          created_at: string | null
-          grams: number | null
           id: string
-          patient_id: string
-          product_type: string | null
-          purchase_date: string
-          vendor_id: string | null
+          exception_type: string
+          severity: string
+          title: string
+          description: string | null
+          related_entity_type: string | null
+          related_entity_id: string | null
+          status: Database["public"]["Enums"]["exception_status"]
+          assigned_to: string | null
+          resolution_notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          created_at: string
+          updated_at: string
+          created_by: string | null
         }
         Insert: {
-          amount: number
-          created_at?: string | null
-          grams?: number | null
           id?: string
-          patient_id: string
-          product_type?: string | null
-          purchase_date: string
-          vendor_id?: string | null
+          exception_type: string
+          severity?: string
+          title: string
+          description?: string | null
+          related_entity_type?: string | null
+          related_entity_id?: string | null
+          status?: Database["public"]["Enums"]["exception_status"]
+          assigned_to?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Update: {
-          amount?: number
-          created_at?: string | null
-          grams?: number | null
           id?: string
-          patient_id?: string
-          product_type?: string | null
-          purchase_date?: string
-          vendor_id?: string | null
+          exception_type?: string
+          severity?: string
+          title?: string
+          description?: string | null
+          related_entity_type?: string | null
+          related_entity_id?: string | null
+          status?: Database["public"]["Enums"]["exception_status"]
+          assigned_to?: string | null
+          resolution_notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
-        Relationships: [
-          {
-            foreignKeyName: "patient_purchases_patient_id_fkey"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "patient_purchases_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      patient_vendor_usage: {
+      notifications: {
         Row: {
-          amount_spent: number | null
-          clinic_id: string
-          created_at: string | null
-          grams_purchased: number | null
           id: string
-          patient_id: string
-          updated_at: string | null
-          usage_month: string
-          vendor_id: string
+          user_id: string
+          type: Database["public"]["Enums"]["notification_type"]
+          title: string
+          message: string
+          link: string | null
+          is_read: boolean
+          read_at: string | null
+          created_at: string
         }
         Insert: {
-          amount_spent?: number | null
-          clinic_id: string
-          created_at?: string | null
-          grams_purchased?: number | null
           id?: string
-          patient_id: string
-          updated_at?: string | null
-          usage_month: string
-          vendor_id: string
+          user_id: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          title: string
+          message: string
+          link?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
         }
         Update: {
-          amount_spent?: number | null
-          clinic_id?: string
-          created_at?: string | null
-          grams_purchased?: number | null
           id?: string
-          patient_id?: string
-          updated_at?: string | null
-          usage_month?: string
-          vendor_id?: string
+          user_id?: string
+          type?: Database["public"]["Enums"]["notification_type"]
+          title?: string
+          message?: string
+          link?: string | null
+          is_read?: boolean
+          read_at?: string | null
+          created_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "patient_vendor_usage_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "patient_vendor_usage_patient_id_fkey"
-            columns: ["patient_id"]
-            isOneToOne: false
-            referencedRelation: "patients"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "patient_vendor_usage_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       patients: {
         Row: {
-          address: string | null
-          clinic_id: string
-          created_at: string | null
-          date_of_birth: string | null
-          email: string | null
-          first_name: string
           id: string
-          is_dummy: boolean | null
-          is_veteran: boolean | null
-          k_number: string
+          patient_number: string
+          first_name: string
           last_name: string
+          date_of_birth: string | null
+          gender: string | null
           phone: string | null
-          preferred_vendor_id: string | null
-          prescription_status: string | null
-          status: string | null
-          updated_at: string | null
-          vendor_id: string | null
+          email: string | null
+          address: string | null
+          city: string | null
+          state: string | null
+          zip_code: string | null
+          insurance_provider: string | null
+          insurance_number: string | null
+          clinic_id: string | null
+          status: string
+          created_at: string
+          updated_at: string
+          created_by: string | null
         }
         Insert: {
-          address?: string | null
-          clinic_id: string
-          created_at?: string | null
-          date_of_birth?: string | null
-          email?: string | null
-          first_name: string
           id?: string
-          is_dummy?: boolean | null
-          is_veteran?: boolean | null
-          k_number: string
+          patient_number: string
+          first_name: string
           last_name: string
+          date_of_birth?: string | null
+          gender?: string | null
           phone?: string | null
-          preferred_vendor_id?: string | null
-          prescription_status?: string | null
-          status?: string | null
-          updated_at?: string | null
-          vendor_id?: string | null
+          email?: string | null
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          insurance_provider?: string | null
+          insurance_number?: string | null
+          clinic_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Update: {
-          address?: string | null
-          clinic_id?: string
-          created_at?: string | null
-          date_of_birth?: string | null
-          email?: string | null
-          first_name?: string
           id?: string
-          is_dummy?: boolean | null
-          is_veteran?: boolean | null
-          k_number?: string
+          patient_number?: string
+          first_name?: string
           last_name?: string
+          date_of_birth?: string | null
+          gender?: string | null
           phone?: string | null
-          preferred_vendor_id?: string | null
-          prescription_status?: string | null
-          status?: string | null
-          updated_at?: string | null
-          vendor_id?: string | null
+          email?: string | null
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          insurance_provider?: string | null
+          insurance_number?: string | null
+          clinic_id?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
         }
         Relationships: [
           {
@@ -288,211 +365,222 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "clinics"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "patients_preferred_vendor_id_fkey"
-            columns: ["preferred_vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "patients_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
+          }
         ]
       }
-      profiles: {
+      prescriptions: {
         Row: {
+          id: string
+          patient_id: string
+          prescription_number: string
+          medication_name: string
+          dosage: string | null
+          quantity: number | null
+          refills: number
+          prescribing_doctor: string | null
           clinic_id: string | null
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          updated_at: string | null
+          vendor_id: string | null
+          fill_date: string | null
+          expiration_date: string | null
+          status: string
+          created_at: string
+          updated_at: string
         }
         Insert: {
-          clinic_id?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          updated_at?: string | null
-        }
-        Update: {
-          clinic_id?: string | null
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
           id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "profiles_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_roles: {
-        Row: {
-          created_at: string | null
-          id: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          role: Database["public"]["Enums"]["app_role"]
-          user_id: string
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          role?: Database["public"]["Enums"]["app_role"]
-          user_id?: string
-        }
-        Relationships: []
-      }
-      vendor_reports: {
-        Row: {
-          amount: number | null
-          clinic_id: string
-          created_at: string | null
-          grams_sold: number | null
-          id: string
-          is_dummy: boolean | null
           patient_id: string
-          product_name: string | null
-          report_month: string
-          updated_at: string | null
-          vendor_id: string
-        }
-        Insert: {
-          amount?: number | null
-          clinic_id: string
-          created_at?: string | null
-          grams_sold?: number | null
-          id?: string
-          is_dummy?: boolean | null
-          patient_id: string
-          product_name?: string | null
-          report_month: string
-          updated_at?: string | null
-          vendor_id: string
+          prescription_number: string
+          medication_name: string
+          dosage?: string | null
+          quantity?: number | null
+          refills?: number
+          prescribing_doctor?: string | null
+          clinic_id?: string | null
+          vendor_id?: string | null
+          fill_date?: string | null
+          expiration_date?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
         Update: {
-          amount?: number | null
-          clinic_id?: string
-          created_at?: string | null
-          grams_sold?: number | null
           id?: string
-          is_dummy?: boolean | null
           patient_id?: string
-          product_name?: string | null
-          report_month?: string
-          updated_at?: string | null
-          vendor_id?: string
+          prescription_number?: string
+          medication_name?: string
+          dosage?: string | null
+          quantity?: number | null
+          refills?: number
+          prescribing_doctor?: string | null
+          clinic_id?: string | null
+          vendor_id?: string | null
+          fill_date?: string | null
+          expiration_date?: string | null
+          status?: string
+          created_at?: string
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "vendor_reports_clinic_id_fkey"
-            columns: ["clinic_id"]
-            isOneToOne: false
-            referencedRelation: "clinics"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "vendor_reports_patient_id_fkey"
+            foreignKeyName: "prescriptions_patient_id_fkey"
             columns: ["patient_id"]
             isOneToOne: false
             referencedRelation: "patients"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "vendor_reports_vendor_id_fkey"
-            columns: ["vendor_id"]
-            isOneToOne: false
-            referencedRelation: "vendors"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      vendors: {
-        Row: {
-          address: string | null
-          clinic_id: string | null
-          contact_person: string | null
-          created_at: string | null
-          email: string | null
-          id: string
-          is_dummy: boolean | null
-          license_number: string | null
-          name: string
-          phone: string | null
-          status: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          address?: string | null
-          clinic_id?: string | null
-          contact_person?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          is_dummy?: boolean | null
-          license_number?: string | null
-          name: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          address?: string | null
-          clinic_id?: string | null
-          contact_person?: string | null
-          created_at?: string | null
-          email?: string | null
-          id?: string
-          is_dummy?: boolean | null
-          license_number?: string | null
-          name?: string
-          phone?: string | null
-          status?: string | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "vendors_clinic_id_fkey"
+            foreignKeyName: "prescriptions_clinic_id_fkey"
             columns: ["clinic_id"]
             isOneToOne: false
             referencedRelation: "clinics"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "prescriptions_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          }
         ]
+      }
+      vendor_reports: {
+        Row: {
+          id: string
+          vendor_id: string | null
+          report_name: string
+          report_type: string | null
+          file_url: string | null
+          file_size: number | null
+          report_period_start: string | null
+          report_period_end: string | null
+          status: Database["public"]["Enums"]["report_status"]
+          processed_at: string | null
+          processing_errors: Json | null
+          data_summary: Json | null
+          uploaded_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          vendor_id?: string | null
+          report_name: string
+          report_type?: string | null
+          file_url?: string | null
+          file_size?: number | null
+          report_period_start?: string | null
+          report_period_end?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          processed_at?: string | null
+          processing_errors?: Json | null
+          data_summary?: Json | null
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          vendor_id?: string | null
+          report_name?: string
+          report_type?: string | null
+          file_url?: string | null
+          file_size?: number | null
+          report_period_start?: string | null
+          report_period_end?: string | null
+          status?: Database["public"]["Enums"]["report_status"]
+          processed_at?: string | null
+          processing_errors?: Json | null
+          data_summary?: Json | null
+          uploaded_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendor_reports_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      vendors: {
+        Row: {
+          id: string
+          name: string
+          code: string
+          address: string | null
+          city: string | null
+          state: string | null
+          zip_code: string | null
+          phone: string | null
+          email: string | null
+          contact_person: string | null
+          contact_phone: string | null
+          contract_start_date: string | null
+          contract_end_date: string | null
+          contract_details: Json | null
+          status: string
+          created_at: string
+          updated_at: string
+          created_by: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          code: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          phone?: string | null
+          email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_start_date?: string | null
+          contract_end_date?: string | null
+          contract_details?: Json | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          code?: string
+          address?: string | null
+          city?: string | null
+          state?: string | null
+          zip_code?: string | null
+          phone?: string | null
+          email?: string | null
+          contact_person?: string | null
+          contact_phone?: string | null
+          contract_start_date?: string | null
+          contract_end_date?: string | null
+          contract_details?: Json | null
+          status?: string
+          created_at?: string
+          updated_at?: string
+          created_by?: string | null
+        }
+        Relationships: []
       }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      has_role: {
-        Args: {
-          _role: Database["public"]["Enums"]["app_role"]
-          _user_id: string
-        }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
-      app_role: "admin" | "clinic_staff"
+      user_role: "admin" | "manager" | "staff" | "viewer"
+      exception_status: "pending" | "in_review" | "resolved" | "dismissed"
+      notification_type: "info" | "warning" | "error" | "success"
+      report_status: "pending" | "processing" | "completed" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -620,7 +708,10 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "clinic_staff"],
+      user_role: ["admin", "manager", "staff", "viewer"],
+      exception_status: ["pending", "in_review", "resolved", "dismissed"],
+      notification_type: ["info", "warning", "error", "success"],
+      report_status: ["pending", "processing", "completed", "failed"],
     },
   },
 } as const
