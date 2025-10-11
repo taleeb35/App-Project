@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/integrations/supabase/client';
 import { FileText, Search, Calendar } from 'lucide-react';
 import { useClinic } from '@/contexts/ClinicContext';
 
