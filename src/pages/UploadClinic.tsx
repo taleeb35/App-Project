@@ -208,9 +208,10 @@ export default function UploadClinic() {
           // Resolve vendor IDs for this clinic (fuzzy match, suffix cleanup)
           let vendorIds: string[] = [];
           if (vendorsRaw) {
-            const vendorNames = String(vendorsRaw)
-              .split(/[,;|]/)
-              .map((v) => v.replace(/^["']|["']$/g, '').trim())
+            const normalizedListStr = String(vendorsRaw).replace(/&/g, ',');
+            const vendorNames = normalizedListStr
+              .split(/[;,|\/\n]+/)
+              .map((v) => v.replace(/^[\"']|[\"']$/g, '').trim())
               .filter((v) => v.length > 0);
 
             for (const originalName of vendorNames) {
@@ -239,6 +240,22 @@ export default function UploadClinic() {
                   .limit(1)
                   .maybeSingle();
                 if (vendorMatch2?.id) vendorMatchId = vendorMatch2.id;
+              }
+
+              // Auto-create vendor if not found (then map)
+              if (!vendorMatchId) {
+                const { data: createdVendor, error: createVendorError } = await (supabase as any)
+                  .from('vendors')
+                  .insert({
+                    clinic_id: selectedClinic.id,
+                    name: vendorName.trim(),
+                    status: 'active',
+                  } as any)
+                  .select('id')
+                  .single();
+                if (!createVendorError && createdVendor?.id) {
+                  vendorMatchId = createdVendor.id;
+                }
               }
 
               if (vendorMatchId) vendorIds.push(vendorMatchId);
@@ -300,6 +317,19 @@ export default function UploadClinic() {
                 console.error(`Failed to link vendors for patient ${patientId}:`, junctionError);
                 // Do not mark as failed, continue processing
               }
+            }
+
+            // Ensure preferred vendor is set if missing
+            const { data: prefCheck } = await (supabase as any)
+              .from('patients')
+              .select('preferred_vendor_id')
+              .eq('id', patientId)
+              .single();
+            if (!prefCheck?.preferred_vendor_id && vendorIds[0]) {
+              await (supabase as any)
+                .from('patients')
+                .update({ preferred_vendor_id: vendorIds[0] })
+                .eq('id', patientId);
             }
           }
         } catch (error: any) {
