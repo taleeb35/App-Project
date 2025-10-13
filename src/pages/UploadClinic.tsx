@@ -215,31 +215,33 @@ export default function UploadClinic() {
               .filter((v) => v.length > 0);
 
             for (const originalName of vendorNames) {
-              const vendorName = originalName;
-              const cleaned = vendorName
-                .replace(/\b(dispensary|pharmacy|llc|inc|co\.?|company)\b/gi, '')
-                .trim();
-
+              const vendorName = originalName.trim();
+              
               let vendorMatchId: string | null = null;
 
-              const { data: vendorMatch1 } = await (supabase as any)
+              // First try exact match (case-insensitive)
+              const { data: exactMatch } = await (supabase as any)
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
-                .ilike('name', `%${vendorName}%`)
+                .ilike('name', vendorName)
                 .limit(1)
                 .maybeSingle();
-              if (vendorMatch1?.id) {
-                vendorMatchId = vendorMatch1.id;
-              } else if (cleaned && cleaned.toLowerCase() !== vendorName.toLowerCase()) {
-                const { data: vendorMatch2 } = await (supabase as any)
+              
+              if (exactMatch?.id) {
+                vendorMatchId = exactMatch.id;
+              } else {
+                // Then try partial match
+                const { data: partialMatch } = await (supabase as any)
                   .from('vendors')
                   .select('id')
                   .eq('clinic_id', selectedClinic.id)
-                  .ilike('name', `%${cleaned}%`)
+                  .ilike('name', `%${vendorName}%`)
                   .limit(1)
                   .maybeSingle();
-                if (vendorMatch2?.id) vendorMatchId = vendorMatch2.id;
+                if (partialMatch?.id) {
+                  vendorMatchId = partialMatch.id;
+                }
               }
 
               // Auto-create vendor if not found (then map)
