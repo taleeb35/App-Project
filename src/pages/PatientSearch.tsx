@@ -56,19 +56,52 @@ export default function PatientSearch() {
 
     setSearching(true);
     try {
-      // Build query based on what fields are filled
-      let query = supabase.from('patients').select('*');
-      
-      if (searchKNumber.trim()) {
-        query = query.ilike('k_number', `%${searchKNumber}%`);
-      }
-      
-      if (searchName.trim()) {
-        // Search in both first_name and last_name
-        query = query.or(`first_name.ilike.%${searchName}%,last_name.ilike.%${searchName}%`);
+      // Build robust search that supports full names with spaces
+      const name = searchName.trim();
+      const k = searchKNumber.trim();
+
+      let patientData: any = null;
+      let patientError: any = null;
+
+      const base = () => supabase.from('patients').select('*').limit(1);
+      const withK = (q: any) => (k ? q.ilike('k_number', `%${k}%`) : q);
+
+      // 1) If K number provided, prioritize it
+      if (k) {
+        const { data, error } = await withK(base()).maybeSingle();
+        patientData = data;
+        patientError = error;
       }
 
-      const { data: patientData, error: patientError } = await query.maybeSingle();
+      // 2) If not found by K or no K provided, search by name
+      if (!patientData && name) {
+        const tokens = name.split(/\s+/).filter(Boolean);
+        if (tokens.length >= 2) {
+          const first = tokens[0];
+          const last = tokens[tokens.length - 1];
+
+          // Try First + Last
+          const res1 = await withK(base().ilike('first_name', `%${first}%`).ilike('last_name', `%${last}%`)).maybeSingle();
+          patientData = res1.data;
+
+          // Try Last + First
+          if (!patientData) {
+            const res2 = await withK(base().ilike('first_name', `%${last}%`).ilike('last_name', `%${first}%`)).maybeSingle();
+            patientData = res2.data;
+          }
+
+          // Fallback: OR on full string using PostgREST wildcard syntax
+          if (!patientData) {
+            const res3 = await withK(base().or(`first_name.ilike.*${name}*,last_name.ilike.*${name}*`)).maybeSingle();
+            patientData = res3.data;
+          }
+        } else {
+          // Single token: OR across first and last (use * wildcards for PostgREST .or)
+          const res = await withK(base().or(`first_name.ilike.*${name}*,last_name.ilike.*${name}*`)).maybeSingle();
+          patientData = res.data;
+        }
+      }
+
 
       if (patientError) throw patientError;
 
