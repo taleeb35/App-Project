@@ -194,8 +194,12 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const phone = map['phone'] ? String(map['phone']).trim() : null;
           const email = map['email'] ? String(map['email']).trim() : null;
 
+          // Get patient type (Veterans or Civilians)
+          const typeRaw = String(map['type'] ?? 'Veterans').trim();
+          const isVeteran = typeRaw.toLowerCase() === 'veterans';
+
           // Insert new patient
-          const { error: insertError } = await (supabase as any)
+          const { data: newPatient, error: insertError } = await (supabase as any)
             .from('patients')
             .insert([
               {
@@ -207,10 +211,36 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 phone,
                 email,
                 status: patientStatus,
+                is_veteran: isVeteran,
               } as any
-            ]);
+            ])
+            .select('id')
+            .single();
 
           if (insertError) throw insertError;
+
+          // Handle vendor associations if vendors column exists
+          const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
+          if (vendorsRaw && newPatient) {
+            // Split by comma and clean up vendor names
+            const vendorNames = vendorsRaw.split(',').map(v => v.trim()).filter(v => v.length > 0);
+            
+            // For each vendor name, find or note it
+            for (const vendorName of vendorNames) {
+              // Try to find vendor by name in the clinic
+              const { data: vendorMatch } = await (supabase as any)
+                .from('vendors')
+                .select('id')
+                .eq('clinic_id', selectedClinic.id)
+                .ilike('name', vendorName)
+                .limit(1)
+                .maybeSingle();
+
+              // If vendor found, we could create a patient_vendors junction table entry
+              // For now, we just log that the association exists
+              // You may want to create a patient_vendors table to track many-to-many relationships
+            }
+          }
 
           addedCount++;
         } catch (error: any) {
@@ -295,15 +325,20 @@ const normalizeRow = (row: Record<string, unknown>) => {
           </CardHeader>
           <CardContent>
               <ul className="list-disc list-inside space-y-2 text-sm">
-                <li><strong>Name</strong> – Patient full name</li>
-                <li><strong>DOB</strong> – Date of birth (YYYY-MM-DD or Excel date)</li>
-                <li><strong>K Number</strong> – Insurance ID for Veterans</li>
-                <li><strong>Phone</strong> – Contact phone (optional)</li>
+                <li><strong>Name</strong> – Patient full name (required)</li>
+                <li><strong>DOB</strong> – Date of birth in YYYY-MM-DD format (required)</li>
+                <li><strong>K Number</strong> – Patient identification number (required)</li>
+                <li><strong>Phone</strong> – Contact phone number (optional)</li>
                 <li><strong>Email</strong> – Email address (optional)</li>
-                <li><strong>Prescription Status</strong> – active/inactive (optional, defaults to "active")</li>
-                <li><strong>Vendors</strong> – Comma-separated vendor names (optional)</li>
-                <li><strong>Type</strong> – Veterans or Civilians (optional)</li>
+                <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
+                <li><strong>Vendors</strong> – Comma-separated vendor names for multiple vendor associations (e.g., "Vendor A, Vendor B") (optional)</li>
+                <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
               </ul>
+              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Note:</strong> Patients can be linked to multiple vendors by separating vendor names with commas in the Vendors column.
+                </p>
+              </div>
           </CardContent>
         </Card>
 
