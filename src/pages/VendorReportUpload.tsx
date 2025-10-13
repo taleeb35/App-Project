@@ -26,6 +26,7 @@ export default function VendorReportUpload() {
   useEffect(() => {
     if (user) fetchVendors();
   }, [user]);
+
   const fetchVendors = async () => {
     if (!user) { setVendors([]); return; }
     try {
@@ -36,7 +37,15 @@ export default function VendorReportUpload() {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+
+      // DE-DUPLICATION LOGIC
+      if (data) {
+        const uniqueVendors = Array.from(new Map(data.map(vendor => [vendor.name, vendor])).values());
+        setVendors(uniqueVendors);
+      } else {
+        setVendors([]);
+      }
+
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -45,6 +54,7 @@ export default function VendorReportUpload() {
       });
     }
   };
+
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
