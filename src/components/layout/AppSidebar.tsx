@@ -35,7 +35,6 @@ const navigationItems = [
     title: "Patient Management",
     items: [
       { title: "Patient Database", url: "/patients", icon: DatabaseIcon },
-      { title: "Patient Search", url: "/patients/search", icon: Search },
       { title: "Upload Patient Data", url: "/upload/clinic", icon: Upload },
     ],
   },

@@ -44,7 +44,8 @@ export default function PatientDatabase() {
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchKNumber, setSearchKNumber] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -281,12 +282,13 @@ export default function PatientDatabase() {
   };
 
   const filteredPatients = patients.filter(patient => {
-    const matchesSearch = 
-      `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      patient.k_number.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesName = searchName === "" || 
+      `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchName.toLowerCase());
+    const matchesKNumber = searchKNumber === "" || 
+      patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
     const matchesStatus = statusFilter === "all" || patient.status?.toLowerCase() === statusFilter;
     
-    return matchesSearch && matchesStatus;
+    return matchesName && matchesKNumber && matchesStatus;
   });
 
   // Pagination
@@ -483,13 +485,29 @@ export default function PatientDatabase() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Input
-              placeholder="Search by name or K number..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="search_name" className="text-sm font-medium mb-2 block">
+                Search by Name
+              </Label>
+              <Input
+                id="search_name"
+                placeholder="Enter patient name..."
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="search_k_number" className="text-sm font-medium mb-2 block">
+                Search by K Number
+              </Label>
+              <Input
+                id="search_k_number"
+                placeholder="Enter K number..."
+                value={searchKNumber}
+                onChange={(e) => setSearchKNumber(e.target.value)}
+              />
+            </div>
           </div>
         </CardContent>
       </Card>
