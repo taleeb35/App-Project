@@ -7,13 +7,16 @@ import { supabase } from '@/integrations/supabase/client';
 export async function seedInitialData() {
   try {
     // 1. Check if Avail HQ clinic exists
-    const { data: existingClinic } = await supabase
+    const { data: existingClinic, error: existingClinicErr } = await supabase
       .from('clinics')
       .select('id')
       .eq('name', 'Avail HQ')
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle();
 
-    if (!existingClinic) {
+
+    if (!existingClinic && !existingClinicErr) {
       // Create Avail HQ clinic
       const { error: clinicError } = await supabase
         .from('clinics')
@@ -33,13 +36,16 @@ export async function seedInitialData() {
     }
 
     // 2. Check if Green Valley Dispensary exists
-    const { data: existingVendor } = await supabase
+    const { data: existingVendor, error: existingVendorErr } = await supabase
       .from('vendors')
       .select('id')
       .eq('name', 'Green Valley Dispensary')
+      .order('created_at', { ascending: true })
+      .limit(1)
       .maybeSingle();
 
-    if (!existingVendor) {
+
+    if (!existingVendor && !existingVendorErr) {
       // Create Green Valley Dispensary vendor
       const { error: vendorError } = await supabase
         .from('vendors')

@@ -65,33 +65,56 @@ export default function Vendors() {
 
   const handleAddVendor = async () => {
     try {
+      const name = formData.name.trim();
+      if (!name) {
+        toast({ title: 'Name required', description: 'Please enter a vendor name', variant: 'destructive' });
+        return;
+      }
+
+      // Prevent duplicates by checking for existing vendor with same name (case-insensitive)
+      const { data: existing, error: checkError } = await supabase
+        .from('vendors')
+        .select('id')
+        .ilike('name', name)
+        .limit(1)
+        .maybeSingle();
+      if (checkError) console.warn('Vendor check error', checkError);
+
+      if (existing?.id) {
+        toast({ title: 'Duplicate prevented', description: 'A vendor with this name already exists.' });
+        setIsAddDialogOpen(false);
+        setFormData({ name: '', license_number: '', contact_person: '', phone: '', email: '', address: '' });
+        return;
+      }
+
       const { error } = await supabase.from('vendors').insert({
         ...formData,
+        name,
         status: 'active',
       } as any);
 
       if (error) throw error;
 
       toast({
-        title: "Success",
-        description: "Vendor added successfully",
+        title: 'Success',
+        description: 'Vendor added successfully',
       });
 
       setIsAddDialogOpen(false);
       setFormData({
-        name: "",
-        license_number: "",
-        contact_person: "",
-        phone: "",
-        email: "",
-        address: "",
+        name: '',
+        license_number: '',
+        contact_person: '',
+        phone: '',
+        email: '',
+        address: '',
       });
       fetchVendors();
     } catch (error: any) {
       toast({
-        title: "Error",
+        title: 'Error',
         description: error.message,
-        variant: "destructive",
+        variant: 'destructive',
       });
     }
   };
@@ -172,6 +195,16 @@ export default function Vendors() {
 
   const activeVendors = vendors.filter(v => v.status === 'active').length;
 
+  const handleCleanupDuplicates = async () => {
+    const { data, error } = await supabase.functions.invoke('cleanup-duplicate-vendors');
+    if (error) {
+      toast({ title: 'Cleanup failed', description: String(error), variant: 'destructive' });
+      return;
+    }
+    toast({ title: 'Cleanup complete', description: (data as any)?.message || 'Removed duplicate vendors' });
+    fetchVendors();
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -181,13 +214,15 @@ export default function Vendors() {
           <p className="text-muted-foreground">Manage producers, dispensaries, and pharmacies</p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add New Vendor
-            </Button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={handleCleanupDuplicates}>Clean Duplicates</Button>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add New Vendor
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New Vendor</DialogTitle>
