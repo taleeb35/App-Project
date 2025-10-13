@@ -196,25 +196,29 @@ export default function UploadClinic() {
             continue;
           }
 
-          // Try to resolve preferred vendor from first name in Vendors column
-          let preferred_vendor_id: string | null = null;
+          // Parse vendor names from Vendors column
           const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
-          if (vendorsRaw) {
-            const vendorNames = vendorsRaw.split(',').map(v => v.trim()).filter(Boolean);
-            if (vendorNames.length > 0) {
+          const vendorNames = vendorsRaw ? vendorsRaw.split(',').map(v => v.trim()).filter(Boolean) : [];
+          
+          // Fetch all matching vendors for this clinic
+          let vendorIds: string[] = [];
+          if (vendorNames.length > 0) {
+            for (const vendorName of vendorNames) {
               const { data: vendorMatch } = await (supabase as any)
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
-                .ilike('name', vendorNames[0])
+                .ilike('name', vendorName)
                 .limit(1)
                 .maybeSingle();
-              if (vendorMatch?.id) preferred_vendor_id = vendorMatch.id as string;
+              if (vendorMatch?.id) {
+                vendorIds.push(vendorMatch.id);
+              }
             }
           }
 
           // Insert patient
-          const { error } = await (supabase as any)
+          const { data: newPatient, error } = await (supabase as any)
             .from('patients')
             .insert({
               clinic_id: selectedClinic.id,
@@ -227,13 +231,30 @@ export default function UploadClinic() {
               prescription_status: rxStatusRaw,
               status: patientStatus,
               is_veteran: isVeteran,
-              preferred_vendor_id,
-            } as any);
+              preferred_vendor_id: vendorIds[0] || null,
+            } as any)
+            .select()
+            .single();
 
           if (error) {
             errors.push(`Row ${rowNum}: ${error.message}`);
             failed++;
           } else {
+            // Insert vendor relationships into junction table
+            if (newPatient && vendorIds.length > 0) {
+              const patientVendorInserts = vendorIds.map(vendorId => ({
+                patient_id: newPatient.id,
+                vendor_id: vendorId
+              }));
+              
+              const { error: junctionError } = await (supabase as any)
+                .from('patient_vendors')
+                .insert(patientVendorInserts);
+              
+              if (junctionError) {
+                console.error(`Failed to link vendors for patient ${newPatient.id}:`, junctionError);
+              }
+            }
             successful++;
           }
         } catch (error: any) {

@@ -85,14 +85,23 @@ export default function PatientSearch() {
 
       setPatient(patientData as any);
 
-      // Fetch vendor information
-      const vendorIds = [(patientData as any).vendor_id, (patientData as any).preferred_vendor_id].filter(Boolean);
-      if (vendorIds.length > 0) {
-        const { data: vendorsData } = await supabase
-          .from('vendors')
-          .select('id, name')
-          .in('id', vendorIds);
-        setVendors(vendorsData || []);
+      // Fetch vendors linked to this patient through junction table
+      const { data: patientVendorsData } = await supabase
+        .from('patient_vendors' as any)
+        .select(`
+          vendor_id,
+          vendors:vendor_id (
+            id,
+            name
+          )
+        `)
+        .eq('patient_id', patientData.id);
+
+      if (patientVendorsData && patientVendorsData.length > 0) {
+        const vendorsList = patientVendorsData
+          .map((pv: any) => pv.vendors)
+          .filter(Boolean);
+        setVendors(vendorsList);
       } else {
         setVendors([]);
       }
