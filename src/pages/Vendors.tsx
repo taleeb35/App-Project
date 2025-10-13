@@ -361,6 +361,7 @@ export default function Vendors() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Summary Stats */}
