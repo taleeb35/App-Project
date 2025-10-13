@@ -190,72 +190,117 @@ export default function UploadClinic() {
             .eq('clinic_id', selectedClinic.id)
             .eq('k_number', String(kNumber).trim());
           if (checkError) throw checkError;
-          if (existingPatients && existingPatients.length > 0) {
-            errors.push(`Row ${rowNum}: Duplicate K Number`);
-            failed++;
-            continue;
-          }
 
-          // Parse vendor names from Vendors column
-          const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
-          const vendorNames = vendorsRaw ? vendorsRaw.split(',').map(v => v.trim()).filter(Boolean) : [];
-          
-          // Fetch all matching vendors for this clinic
+          // Parse vendor names from a variety of possible headers
+          const vendorsCell = (
+            map['vendors'] ??
+            map['vendor'] ??
+            map['assignedvendors'] ??
+            map['assignedvendor'] ??
+            map['dispensary'] ??
+            map['dispensaries'] ??
+            map['pharmacy'] ??
+            ''
+          ) as string | undefined;
+
+          const vendorsRaw = vendorsCell ? String(vendorsCell).trim() : '';
+
+          // Resolve vendor IDs for this clinic (fuzzy match, suffix cleanup)
           let vendorIds: string[] = [];
-          if (vendorNames.length > 0) {
-            for (const vendorName of vendorNames) {
-              const { data: vendorMatch } = await (supabase as any)
+          if (vendorsRaw) {
+            const vendorNames = String(vendorsRaw)
+              .split(/[,;|]/)
+              .map((v) => v.replace(/^["']|["']$/g, '').trim())
+              .filter((v) => v.length > 0);
+
+            for (const originalName of vendorNames) {
+              const vendorName = originalName;
+              const cleaned = vendorName
+                .replace(/\b(dispensary|pharmacy|llc|inc|co\.?|company)\b/gi, '')
+                .trim();
+
+              let vendorMatchId: string | null = null;
+
+              const { data: vendorMatch1 } = await (supabase as any)
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
                 .ilike('name', `%${vendorName}%`)
                 .limit(1)
                 .maybeSingle();
-              if (vendorMatch?.id) {
-                vendorIds.push(vendorMatch.id);
+              if (vendorMatch1?.id) {
+                vendorMatchId = vendorMatch1.id;
+              } else if (cleaned && cleaned.toLowerCase() !== vendorName.toLowerCase()) {
+                const { data: vendorMatch2 } = await (supabase as any)
+                  .from('vendors')
+                  .select('id')
+                  .eq('clinic_id', selectedClinic.id)
+                  .ilike('name', `%${cleaned}%`)
+                  .limit(1)
+                  .maybeSingle();
+                if (vendorMatch2?.id) vendorMatchId = vendorMatch2.id;
               }
+
+              if (vendorMatchId) vendorIds.push(vendorMatchId);
             }
+            vendorIds = Array.from(new Set(vendorIds));
           }
 
-          // Insert patient
-          const { data: newPatient, error } = await (supabase as any)
-            .from('patients')
-            .insert({
-              clinic_id: selectedClinic.id,
-              first_name: firstName,
-              last_name: lastName,
-              k_number: String(kNumber).trim(),
-              date_of_birth: dateOfBirth,
-              phone,
-              email,
-              prescription_status: rxStatusRaw,
-              status: patientStatus,
-              is_veteran: isVeteran,
-              preferred_vendor_id: vendorIds[0] || null,
-            } as any)
-            .select()
-            .single();
+          let patientId: string | null = null;
 
-          if (error) {
-            errors.push(`Row ${rowNum}: ${error.message}`);
-            failed++;
+          if (existingPatients && existingPatients.length > 0) {
+            // Use existing patient and proceed to vendor mapping (do not treat as failure)
+            patientId = existingPatients[0].id;
           } else {
-            // Insert vendor relationships into junction table
-            if (newPatient && vendorIds.length > 0) {
-              const patientVendorInserts = vendorIds.map(vendorId => ({
-                patient_id: newPatient.id,
-                vendor_id: vendorId
-              }));
-              
+            // Insert new patient (set preferred vendor to first match when available)
+            const { data: newPatient, error } = await (supabase as any)
+              .from('patients')
+              .insert({
+                clinic_id: selectedClinic.id,
+                first_name: firstName,
+                last_name: lastName,
+                k_number: String(kNumber).trim(),
+                date_of_birth: dateOfBirth,
+                phone,
+                email,
+                prescription_status: rxStatusRaw,
+                status: patientStatus,
+                is_veteran: isVeteran,
+                preferred_vendor_id: vendorIds[0] || null,
+              } as any)
+              .select('id')
+              .single();
+
+            if (error) {
+              errors.push(`Row ${rowNum}: ${error.message}`);
+              failed++;
+              continue;
+            }
+            patientId = newPatient.id;
+            successful++;
+          }
+
+          // Link vendors for both new and existing patients
+          if (patientId && vendorIds.length > 0) {
+            const { data: existingLinks } = await (supabase as any)
+              .from('patient_vendors')
+              .select('vendor_id')
+              .eq('patient_id', patientId);
+
+            const existingSet = new Set((existingLinks || []).map((l: any) => l.vendor_id));
+            const newLinks = vendorIds
+              .filter((id) => !existingSet.has(id))
+              .map((id) => ({ patient_id: patientId, vendor_id: id }));
+
+            if (newLinks.length > 0) {
               const { error: junctionError } = await (supabase as any)
                 .from('patient_vendors')
-                .insert(patientVendorInserts);
-              
+                .insert(newLinks);
               if (junctionError) {
-                console.error(`Failed to link vendors for patient ${newPatient.id}:`, junctionError);
+                console.error(`Failed to link vendors for patient ${patientId}:`, junctionError);
+                // Do not mark as failed, continue processing
               }
             }
-            successful++;
           }
         } catch (error: any) {
           errors.push(`Row ${i + 2}: ${error.message}`);
