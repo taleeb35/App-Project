@@ -66,7 +66,7 @@ export default function Auth() {
           <div className="flex items-center justify-center mb-4">
             <Pill className="h-12 w-12 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Admin Login</CardTitle>
+          <CardTitle className="text-2xl font-bold">Admin Login 1</CardTitle>
           <CardDescription>
             Patient Management System - Admin Access Only
           </CardDescription>
