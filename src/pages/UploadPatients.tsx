@@ -173,19 +173,15 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const dobRaw = (map['dob'] ?? map['dateofbirth']) as string | number | undefined;
           const dob = dobRaw !== undefined ? parseDate(dobRaw) : null;
 
-          // Check for duplicate based on k_number and clinic
+          // Check for existing patient by k_number within clinic
           const { data: existingPatients, error: checkError } = await (supabase as any)
             .from('patients')
             .select('id')
             .eq('clinic_id', selectedClinic.id)
             .eq('k_number', String(kNumber).trim());
-
           if (checkError) throw checkError;
 
-          if (existingPatients && existingPatients.length > 0) {
-            skippedCount++;
-            continue; // Skip duplicate
-          }
+          let patientId: string | null = null;
 
           // Map prescription status to patient.status
           const rxStatusRaw = String(map['prescriptionstatus'] ?? map['status'] ?? 'active').toLowerCase();
@@ -194,55 +190,72 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const phone = map['phone'] ? String(map['phone']).trim() : null;
           const email = map['email'] ? String(map['email']).trim() : null;
 
-          // Get patient type (Veterans or Civilians)
           const typeRaw = String(map['type'] ?? 'Veterans').trim();
           const isVeteran = typeRaw.toLowerCase() === 'veterans';
 
-          // Insert new patient
-          const { data: newPatient, error: insertError } = await (supabase as any)
-            .from('patients')
-            .insert([
-              {
-                clinic_id: selectedClinic.id,
-                k_number: String(kNumber).trim(),
-                first_name: firstName,
-                last_name: lastName,
-                date_of_birth: dob,
-                phone,
-                email,
-                status: patientStatus,
-                is_veteran: isVeteran,
-              } as any
-            ])
-            .select('id')
-            .single();
+          if (existingPatients && existingPatients.length > 0) {
+            // Use existing patient; still process vendor mapping
+            patientId = existingPatients[0].id;
+            skippedCount++;
+          } else {
+            // Insert new patient
+            const { data: newPatient, error: insertError } = await (supabase as any)
+              .from('patients')
+              .insert([
+                {
+                  clinic_id: selectedClinic.id,
+                  k_number: String(kNumber).trim(),
+                  first_name: firstName,
+                  last_name: lastName,
+                  date_of_birth: dob,
+                  phone,
+                  email,
+                  status: patientStatus,
+                  is_veteran: isVeteran,
+                } as any
+              ])
+              .select('id')
+              .single();
+            if (insertError) throw insertError;
+            patientId = newPatient.id;
+            addedCount++;
+          }
 
-          if (insertError) throw insertError;
-
-          // Handle vendor associations if vendors column exists
+          // Handle vendor associations from 'Vendors' column for both new and existing patients
           const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
-          if (vendorsRaw && newPatient) {
-            // Split by comma and clean up vendor names
+          if (vendorsRaw && patientId) {
             const vendorNames = vendorsRaw.split(',').map(v => v.trim()).filter(v => v.length > 0);
-            
-            // For each vendor name, find or note it
+            let vendorIds: string[] = [];
             for (const vendorName of vendorNames) {
-              // Try to find vendor by name in the clinic
               const { data: vendorMatch } = await (supabase as any)
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
-                .ilike('name', vendorName)
+                .ilike('name', `%${vendorName}%`)
                 .limit(1)
                 .maybeSingle();
-
-              // If vendor found, we could create a patient_vendors junction table entry
-              // For now, we just log that the association exists
-              // You may want to create a patient_vendors table to track many-to-many relationships
+              if (vendorMatch?.id) vendorIds.push(vendorMatch.id);
+            }
+            vendorIds = Array.from(new Set(vendorIds));
+            if (vendorIds.length > 0) {
+              const { data: existingLinks } = await (supabase as any)
+                .from('patient_vendors')
+                .select('vendor_id')
+                .eq('patient_id', patientId);
+              const existingSet = new Set((existingLinks || []).map((l: any) => l.vendor_id));
+              const newLinks = vendorIds
+                .filter((id) => !existingSet.has(id))
+                .map((id) => ({ patient_id: patientId, vendor_id: id }));
+              if (newLinks.length > 0) {
+                const { error: linkError } = await (supabase as any)
+                  .from('patient_vendors')
+                  .insert(newLinks);
+                if (linkError) {
+                  console.error('Failed to link vendors for patient', patientId, linkError);
+                }
+              }
             }
           }
-
-          addedCount++;
         } catch (error: any) {
           errors.push(`Row ${rowNum}: ${error.message}`);
         }
