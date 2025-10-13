@@ -9,6 +9,7 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
+
   try {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -21,9 +22,6 @@ Deno.serve(async (req) => {
       }
     );
 
-    // This part of the code is a fallback, as there is no RPC function `get_duplicate_vendors`
-    // in the provided database schema. We'll proceed with the manual query.
-    
     const { data: allVendors, error: vendorError } = await supabaseClient
       .from('vendors')
       .select('id, name, created_at, clinic_id')
@@ -31,7 +29,7 @@ Deno.serve(async (req) => {
     
     if (vendorError) throw vendorError;
     
-    // Group by name and clinic_id
+    // Group vendors by name and clinic_id to find duplicates
     const vendorGroups = new Map<string, any[]>();
     allVendors?.forEach(vendor => {
       const key = `${vendor.name.toLowerCase()}-${vendor.clinic_id}`;
@@ -44,53 +42,46 @@ Deno.serve(async (req) => {
     let totalDeleted = 0;
     let totalUpdated = 0;
     
-    // Process each group
+    // Process each group of vendors
     for (const [key, vendors] of vendorGroups.entries()) {
-      if (vendors.length <= 1) continue; // No duplicates
+      if (vendors.length <= 1) continue; // Not a duplicate
       
-      // Keep the first created vendor
+      // Sort by creation date to keep the oldest one
       vendors.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
       const keepVendor = vendors[0];
       const duplicateVendors = vendors.slice(1);
       const duplicateIds = duplicateVendors.map(v => v.id);
       
-      console.log(`Processing ${vendors.length} duplicates for vendor \"${keepVendor.name}\"`);
-      console.log(`Keeping: ${keepVendor.id}, Deleting: ${duplicateIds.join(', ')}`);
-      
-      // Update patient_vendors junction table
-      for (const dupId of duplicateIds) {
-        const { error: updatePVError } = await supabaseClient
-          .from('patient_vendors')
-          .update({ vendor_id: keepVendor.id })
-          .eq('vendor_id', dupId);
-        
-        if (updatePVError) {
-          console.error(`Error updating patient_vendors for ${dupId}:`, updatePVError);
-        } else {
-          totalUpdated++;
-        }
+      // Update patient_vendors to point to the correct vendor
+      const { error: updatePVError } = await supabaseClient
+        .from('patient_vendors')
+        .update({ vendor_id: keepVendor.id })
+        .in('vendor_id', duplicateIds);
+
+      if (updatePVError) {
+        console.error(`Error updating patient_vendors for duplicates of "${keepVendor.name}":`, updatePVError);
+      } else {
+        totalUpdated += duplicateIds.length;
       }
       
-      // Update patients preferred_vendor_id
-      for (const dupId of duplicateIds) {
-        const { error: updatePError } = await supabaseClient
-          .from('patients')
-          .update({ preferred_vendor_id: keepVendor.id })
-          .eq('preferred_vendor_id', dupId);
-        
-        if (updatePError) {
-          console.error(`Error updating patients for ${dupId}:`, updatePError);
-        }
+      // Update patients' preferred_vendor_id
+      const { error: updatePError } = await supabaseClient
+        .from('patients')
+        .update({ preferred_vendor_id: keepVendor.id })
+        .in('preferred_vendor_id', duplicateIds);
+      
+      if (updatePError) {
+        console.error(`Error updating patients' preferred vendor for duplicates of "${keepVendor.name}":`, updatePError);
       }
       
-      // Delete duplicate vendors
+      // Delete the duplicate vendor records
       const { error: deleteError } = await supabaseClient
         .from('vendors')
         .delete()
         .in('id', duplicateIds);
       
       if (deleteError) {
-        console.error(`Error deleting duplicates:`, deleteError);
+        console.error(`Error deleting duplicate vendors for "${keepVendor.name}":`, deleteError);
       } else {
         totalDeleted += duplicateIds.length;
       }
@@ -99,7 +90,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        message: `Cleaned up ${totalDeleted} duplicate vendors and updated ${totalUpdated} patient-vendor links`,
+        message: `Cleanup complete. Deleted ${totalDeleted} duplicate vendors and updated relevant records.`,
         details: {
           totalDeleted,
           totalUpdated
@@ -109,8 +100,8 @@ Deno.serve(async (req) => {
     );
     
   } catch (error) {
-    console.error('Error:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Error during cleanup:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred.';
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
