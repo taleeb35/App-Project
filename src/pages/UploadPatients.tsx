@@ -331,13 +331,19 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 <li><strong>Phone</strong> – Contact phone number (optional)</li>
                 <li><strong>Email</strong> – Email address (optional)</li>
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
-                <li><strong>Vendors</strong> – Comma-separated vendor names for multiple vendor associations (e.g., "Vendor A, Vendor B") (optional)</li>
+                <li><strong>Vendors</strong> – Single vendor name or multiple vendors separated by commas (e.g., "Green Valley Dispensary, Healing Herbs Co.") (optional)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
               </ul>
-              <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md">
-                <p className="text-sm text-blue-700 dark:text-blue-300">
-                  <strong>Note:</strong> Patients can be linked to multiple vendors by separating vendor names with commas in the Vendors column.
+              <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+                <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">
+                  📌 Important Notes:
                 </p>
+                <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
+                  <li>Column names must match exactly as shown above</li>
+                  <li>Name, DOB, and K Number are required fields</li>
+                  <li>For multiple vendors, separate names with commas in the Vendors column</li>
+                  <li>Date format should be YYYY-MM-DD (e.g., 1965-03-15)</li>
+                </ul>
               </div>
           </CardContent>
         </Card>
