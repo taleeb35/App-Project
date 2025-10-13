@@ -30,16 +30,17 @@ type Purchase = {
 
 export default function PatientSearch() {
   const { toast } = useToast();
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchName, setSearchName] = useState("");
+  const [searchKNumber, setSearchKNumber] = useState("");
   const [searching, setSearching] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+    if (!searchName.trim() && !searchKNumber.trim()) {
       toast({
         title: "Error",
-        description: "Please enter a K number to search",
+        description: "Please enter a name or K number to search",
         variant: "destructive",
       });
       return;
@@ -47,19 +48,26 @@ export default function PatientSearch() {
 
     setSearching(true);
     try {
-      // Search for patient
-      const { data: patientData, error: patientError } = await supabase
-        .from('patients')
-        .select('*')
-        .ilike('k_number', `%${searchQuery}%`)
-        .maybeSingle();
+      // Build query based on what fields are filled
+      let query = supabase.from('patients').select('*');
+      
+      if (searchKNumber.trim()) {
+        query = query.ilike('k_number', `%${searchKNumber}%`);
+      }
+      
+      if (searchName.trim()) {
+        // Search in both first_name and last_name
+        query = query.or(`first_name.ilike.%${searchName}%,last_name.ilike.%${searchName}%`);
+      }
+
+      const { data: patientData, error: patientError } = await query.maybeSingle();
 
       if (patientError) throw patientError;
 
       if (!patientData) {
         toast({
           title: "Not Found",
-          description: "No patient found with that K number",
+          description: "No patient found with the provided information",
           variant: "destructive",
         });
         setPatient(null);
@@ -110,7 +118,7 @@ export default function PatientSearch() {
       {/* Page Header */}
       <div>
         <h1 className="text-3xl font-bold text-foreground">Patient Search</h1>
-        <p className="text-muted-foreground">Search for patients by K number to view their information</p>
+        <p className="text-muted-foreground">Search for patients by name or K number</p>
       </div>
 
       {/* Search Box */}
@@ -120,31 +128,48 @@ export default function PatientSearch() {
             <Search className="h-5 w-5 text-primary" />
             Search Patient
           </CardTitle>
-          <CardDescription>Enter a K number to search for patient records</CardDescription>
+          <CardDescription>Enter a name or K number to search for patient records</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex gap-4">
-            <Input
-              placeholder="Enter K number (e.g., K123456789)"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              className="flex-1"
-            />
-            <Button onClick={handleSearch} disabled={searching}>
-              {searching ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Searching...
-                </>
-              ) : (
-                <>
-                  <Search className="h-4 w-4 mr-2" />
-                  Search
-                </>
-              )}
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+            <div>
+              <label htmlFor="search_name" className="text-sm font-medium mb-2 block">
+                Search by Name
+              </label>
+              <Input
+                id="search_name"
+                placeholder="Enter patient name..."
+                value={searchName}
+                onChange={(e) => setSearchName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
+            <div>
+              <label htmlFor="search_k_number" className="text-sm font-medium mb-2 block">
+                Search by K Number
+              </label>
+              <Input
+                id="search_k_number"
+                placeholder="Enter K number..."
+                value={searchKNumber}
+                onChange={(e) => setSearchKNumber(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+              />
+            </div>
           </div>
+          <Button onClick={handleSearch} disabled={searching} className="w-full">
+            {searching ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Searching...
+              </>
+            ) : (
+              <>
+                <Search className="h-4 w-4 mr-2" />
+                Search
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 
