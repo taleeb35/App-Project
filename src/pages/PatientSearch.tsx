@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, User, Calendar, Phone, Mail, MapPin, ShoppingBag } from "lucide-react";
+import { Search, User, Calendar, Phone, Mail, MapPin, ShoppingBag, Package } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -18,6 +18,13 @@ type Patient = {
   address: string | null;
   status: string | null;
   is_veteran: boolean | null;
+  preferred_vendor_id: string | null;
+  vendor_id: string | null;
+};
+
+type Vendor = {
+  id: string;
+  name: string;
 };
 
 type Purchase = {
@@ -35,6 +42,7 @@ export default function PatientSearch() {
   const [searching, setSearching] = useState(false);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
 
   const handleSearch = async () => {
     if (!searchName.trim() && !searchKNumber.trim()) {
@@ -77,6 +85,18 @@ export default function PatientSearch() {
 
       setPatient(patientData as any);
 
+      // Fetch vendor information
+      const vendorIds = [(patientData as any).vendor_id, (patientData as any).preferred_vendor_id].filter(Boolean);
+      if (vendorIds.length > 0) {
+        const { data: vendorsData } = await supabase
+          .from('vendors')
+          .select('id, name')
+          .in('id', vendorIds);
+        setVendors(vendorsData || []);
+      } else {
+        setVendors([]);
+      }
+
       // Fetch patient purchases from vendor reports
       const { data: purchasesData, error: purchasesError} = await supabase
         .from('vendor_reports' as any)
@@ -105,6 +125,7 @@ export default function PatientSearch() {
       });
       setPatient(null);
       setPurchases([]);
+      setVendors([]);
     } finally {
       setSearching(false);
     }
@@ -200,6 +221,23 @@ export default function PatientSearch() {
                       <div>
                         <p className="text-sm text-muted-foreground">K Number</p>
                         <code className="font-medium bg-muted px-2 py-1 rounded">{patient.k_number}</code>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Vendors</p>
+                        {vendors.length > 0 ? (
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {vendors.map((vendor) => (
+                              <Badge key={vendor.id} variant="outline">
+                                {vendor.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="font-medium">Not assigned</p>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
