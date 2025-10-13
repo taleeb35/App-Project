@@ -222,20 +222,55 @@ const normalizeRow = (row: Record<string, unknown>) => {
           }
 
           // Handle vendor associations from 'Vendors' column for both new and existing patients
-          const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
+          const vendorsCell = (
+            map['vendors'] ??
+            map['vendor'] ??
+            map['assignedvendors'] ??
+            map['assignedvendor'] ??
+            map['dispensary'] ??
+            map['dispensaries'] ??
+            map['pharmacy'] ??
+            ''
+          ) as string | undefined;
+          const vendorsRaw = vendorsCell ? String(vendorsCell).trim() : '';
           if (vendorsRaw && patientId) {
-            const vendorNames = vendorsRaw.split(',').map(v => v.trim()).filter(v => v.length > 0);
+            const vendorNames = String(vendorsRaw)
+              .split(/[,;|]/)
+              .map((v) => v.replace(/^["']|["']$/g, '').trim())
+              .filter((v) => v.length > 0);
+
             let vendorIds: string[] = [];
-            for (const vendorName of vendorNames) {
-              const { data: vendorMatch } = await (supabase as any)
+            for (const originalName of vendorNames) {
+              const vendorName = originalName;
+              const cleaned = vendorName
+                .replace(/\b(dispensary|pharmacy|llc|inc|co\.?|company)\b/gi, '')
+                .trim();
+
+              let vendorMatchId: string | null = null;
+
+              const { data: vendorMatch1 } = await (supabase as any)
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
                 .ilike('name', `%${vendorName}%`)
                 .limit(1)
                 .maybeSingle();
-              if (vendorMatch?.id) vendorIds.push(vendorMatch.id);
+              if (vendorMatch1?.id) {
+                vendorMatchId = vendorMatch1.id;
+              } else if (cleaned && cleaned.toLowerCase() !== vendorName.toLowerCase()) {
+                const { data: vendorMatch2 } = await (supabase as any)
+                  .from('vendors')
+                  .select('id')
+                  .eq('clinic_id', selectedClinic.id)
+                  .ilike('name', `%${cleaned}%`)
+                  .limit(1)
+                  .maybeSingle();
+                if (vendorMatch2?.id) vendorMatchId = vendorMatch2.id;
+              }
+
+              if (vendorMatchId) vendorIds.push(vendorMatchId);
             }
+
             vendorIds = Array.from(new Set(vendorIds));
             if (vendorIds.length > 0) {
               const { data: existingLinks } = await (supabase as any)
@@ -251,6 +286,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
                   .from('patient_vendors')
                   .insert(newLinks);
                 if (linkError) {
+                  errors.push(`Row ${rowNum}: Failed to link vendors - ${linkError.message}`);
                   console.error('Failed to link vendors for patient', patientId, linkError);
                 }
               }
