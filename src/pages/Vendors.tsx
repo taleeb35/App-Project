@@ -136,9 +136,30 @@ export default function Vendors() {
     if (!editingVendor) return;
 
     try {
+      const name = formData.name.trim();
+      if (!name) {
+        toast({ title: 'Name required', description: 'Please enter a vendor name', variant: 'destructive' });
+        return;
+      }
+
+      // Prevent duplicates by checking for existing vendor with same name (excluding current vendor)
+      const { data: existing, error: checkError } = await supabase
+        .from('vendors')
+        .select('id')
+        .ilike('name', name)
+        .neq('id', editingVendor.id)
+        .limit(1)
+        .maybeSingle();
+      if (checkError) console.warn('Vendor check error', checkError);
+
+      if (existing?.id) {
+        toast({ title: 'Duplicate prevented', description: 'A vendor with this name already exists.' });
+        return;
+      }
+
       const { error } = await supabase
         .from('vendors')
-        .update(formData)
+        .update({ ...formData, name })
         .eq('id', editingVendor.id);
 
       if (error) throw error;
@@ -195,16 +216,6 @@ export default function Vendors() {
 
   const activeVendors = vendors.filter(v => v.status === 'active').length;
 
-  const handleCleanupDuplicates = async () => {
-    const { data, error } = await supabase.functions.invoke('cleanup-duplicate-vendors');
-    if (error) {
-      toast({ title: 'Cleanup failed', description: String(error), variant: 'destructive' });
-      return;
-    }
-    toast({ title: 'Cleanup complete', description: (data as any)?.message || 'Removed duplicate vendors' });
-    fetchVendors();
-  };
-
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -215,7 +226,6 @@ export default function Vendors() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleCleanupDuplicates}>Clean Duplicates</Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
