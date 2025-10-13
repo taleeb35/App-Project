@@ -103,7 +103,36 @@ export default function PatientSearch() {
           .filter(Boolean);
         setVendors(vendorsList);
       } else {
-        setVendors([]);
+        // Fallback 1: legacy columns on patients table
+        const legacyIds = [
+          (patientData as any).vendor_id,
+          (patientData as any).preferred_vendor_id,
+        ].filter(Boolean);
+        if (legacyIds.length > 0) {
+          const { data: legacyVendors } = await supabase
+            .from('vendors')
+            .select('id, name')
+            .in('id', legacyIds as string[]);
+          setVendors(legacyVendors || []);
+        } else {
+          // Fallback 2: derive from vendor_reports
+          const { data: reportVendors } = await supabase
+            .from('vendor_reports' as any)
+            .select('vendor_id')
+            .eq('patient_id', patientData.id)
+            .not('vendor_id', 'is', null);
+
+          const uniqueIds = Array.from(new Set((reportVendors || []).map((r: any) => r.vendor_id)));
+          if (uniqueIds.length > 0) {
+            const { data: vendorsByReports } = await supabase
+              .from('vendors')
+              .select('id, name')
+              .in('id', uniqueIds);
+            setVendors(vendorsByReports || []);
+          } else {
+            setVendors([]);
+          }
+        }
       }
 
       // Fetch patient purchases from vendor reports

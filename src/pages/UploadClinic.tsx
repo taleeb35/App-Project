@@ -208,7 +208,7 @@ export default function UploadClinic() {
                 .from('vendors')
                 .select('id')
                 .eq('clinic_id', selectedClinic.id)
-                .ilike('name', vendorName)
+                .ilike('name', `%${vendorName}%`)
                 .limit(1)
                 .maybeSingle();
               if (vendorMatch?.id) {
