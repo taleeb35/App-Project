@@ -539,7 +539,7 @@ export default function PatientDatabase() {
                     <TableHead>K Number</TableHead>
                     <TableHead>DOB</TableHead>
                     <TableHead>Contact</TableHead>
-                    <TableHead>Veteran</TableHead>
+                    <TableHead>Patient Type</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
