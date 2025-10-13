@@ -113,70 +113,125 @@ export default function UploadClinic() {
         return;
       }
 
+      // Helpers for robust parsing
+      const normalizeKey = (key: string) => key?.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const normalizeRow = (row: Record<string, unknown>) => {
+        const map: Record<string, unknown> = {};
+        Object.entries(row || {}).forEach(([k, v]) => {
+          if (!k) return;
+          map[normalizeKey(k)] = v as any;
+        });
+        return map;
+      };
+      const parseName = (fullName: string): { firstName: string; lastName: string } => {
+        const parts = (fullName || '').trim().split(' ');
+        if (parts.length === 1) return { firstName: parts[0] || '', lastName: '' };
+        return { firstName: parts[0] || '', lastName: parts.slice(1).join(' ') };
+      };
+      const parseDate = (dateStr: string | number): string | null => {
+        if (dateStr === undefined || dateStr === null || (dateStr as any) === '') return null;
+        try {
+          if (typeof dateStr === 'number') {
+            const d = XLSX.SSF.parse_date_code(dateStr as number);
+            return `${d.y}-${String(d.m).padStart(2, '0')}-${String(d.d).padStart(2, '0')}`;
+          }
+          const parsed = new Date(dateStr as string);
+          if (isNaN(parsed.getTime())) return null;
+          return parsed.toISOString().split('T')[0];
+        } catch {
+          return null;
+        }
+      };
+
       // Process each row
       for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
+        const originalRow = rows[i];
         
         try {
-          // Parse name field (could be "First Last" or separate fields)
-          let firstName = row.first_name || '';
-          let lastName = row.last_name || '';
-          
-          if (row.name && !firstName && !lastName) {
-            const nameParts = row.name.trim().split(' ');
-            firstName = nameParts[0] || '';
-            lastName = nameParts.slice(1).join(' ') || '';
-          }
+          // Normalize and map headers
+          const map = normalizeRow(originalRow as any);
+          const rowNum = i + 2;
 
-          // Validate required fields
-          if (!firstName || !lastName) {
-            errors.push(`Row ${i + 2}: Missing name`);
+          const fullNameRaw = (map['name'] ?? map['patientname'] ?? map['fullname'] ?? '') as string;
+          const hasFirstLast = map['firstname'] && map['lastname'];
+          const kNumber = (map['knumber'] ?? map['kid'] ?? map['kno']) as string | undefined;
+
+          if (!fullNameRaw && !hasFirstLast) {
+            errors.push(`Row ${rowNum}: Missing name`);
+            failed++;
+            continue;
+          }
+          if (!kNumber) {
+            errors.push(`Row ${rowNum}: Missing K Number`);
             failed++;
             continue;
           }
 
-          if (!row.k_number) {
-            errors.push(`Row ${i + 2}: Missing K Number`);
+          const { firstName, lastName } = hasFirstLast
+            ? { firstName: String(map['firstname'] || '').trim(), lastName: String(map['lastname'] || '').trim() }
+            : parseName(String(fullNameRaw));
+
+          const dobRaw = (map['dob'] ?? map['dateofbirth']) as string | number | undefined;
+          const dateOfBirth = dobRaw !== undefined ? parseDate(dobRaw) : null;
+
+          const phone = map['phone'] ? String(map['phone']).trim() : null;
+          const email = map['email'] ? String(map['email']).trim() : null;
+
+          const rxStatusRaw = String(map['prescriptionstatus'] ?? map['status'] ?? 'active').toLowerCase();
+          const patientStatus = rxStatusRaw === 'inactive' ? 'inactive' : 'active';
+
+          const typeRaw = String(map['type'] ?? 'Veterans').trim();
+          const isVeteran = typeRaw.toLowerCase() === 'veterans';
+
+          // Duplicate check by K Number within clinic
+          const { data: existingPatients, error: checkError } = await (supabase as any)
+            .from('patients')
+            .select('id')
+            .eq('clinic_id', selectedClinic.id)
+            .eq('k_number', String(kNumber).trim());
+          if (checkError) throw checkError;
+          if (existingPatients && existingPatients.length > 0) {
+            errors.push(`Row ${rowNum}: Duplicate K Number`);
             failed++;
             continue;
           }
 
-          // Parse date of birth
-          const dobField = row.date_of_birth || row.dob;
-          let dateOfBirth = null;
-          
-          if (dobField) {
-            // Handle Excel date serial number
-            if (typeof dobField === 'number') {
-              const excelEpoch = new Date(1899, 11, 30);
-              const date = new Date(excelEpoch.getTime() + dobField * 86400000);
-              dateOfBirth = date.toISOString().split('T')[0];
-            } else {
-              // Try to parse as string
-              const parsed = new Date(dobField);
-              if (!isNaN(parsed.getTime())) {
-                dateOfBirth = parsed.toISOString().split('T')[0];
-              }
+          // Try to resolve preferred vendor from first name in Vendors column
+          let preferred_vendor_id: string | null = null;
+          const vendorsRaw = map['vendors'] ? String(map['vendors']).trim() : '';
+          if (vendorsRaw) {
+            const vendorNames = vendorsRaw.split(',').map(v => v.trim()).filter(Boolean);
+            if (vendorNames.length > 0) {
+              const { data: vendorMatch } = await (supabase as any)
+                .from('vendors')
+                .select('id')
+                .eq('clinic_id', selectedClinic.id)
+                .ilike('name', vendorNames[0])
+                .limit(1)
+                .maybeSingle();
+              if (vendorMatch?.id) preferred_vendor_id = vendorMatch.id as string;
             }
           }
 
           // Insert patient
-          const { error } = await supabase
+          const { error } = await (supabase as any)
             .from('patients')
             .insert({
               clinic_id: selectedClinic.id,
               first_name: firstName,
               last_name: lastName,
-              k_number: row.k_number,
+              k_number: String(kNumber).trim(),
               date_of_birth: dateOfBirth,
-              phone: row.phone || null,
-              email: row.email || null,
-              prescription_status: row.prescription_status || row.status || 'active',
-              status: 'active',
+              phone,
+              email,
+              prescription_status: rxStatusRaw,
+              status: patientStatus,
+              is_veteran: isVeteran,
+              preferred_vendor_id,
             } as any);
 
           if (error) {
-            errors.push(`Row ${i + 2}: ${error.message}`);
+            errors.push(`Row ${rowNum}: ${error.message}`);
             failed++;
           } else {
             successful++;
@@ -267,12 +322,14 @@ export default function UploadClinic() {
             <AlertDescription>
               <strong>Excel file should contain these columns:</strong>
               <ul className="list-disc list-inside mt-2 space-y-1">
-                <li><strong>name</strong> (or first_name + last_name) - Patient full name</li>
-                <li><strong>date_of_birth</strong> (or dob) - Date of birth</li>
-                <li><strong>k_number</strong> - Insurance ID for Veterans</li>
-                <li><strong>phone</strong> - Contact phone (optional)</li>
-                <li><strong>email</strong> - Email address (optional)</li>
-                <li><strong>prescription_status</strong> (or status) - Active prescription status (optional, defaults to "active")</li>
+                <li><strong>Name</strong> – Patient full name (required)</li>
+                <li><strong>DOB</strong> – Date of birth in YYYY-MM-DD format (required)</li>
+                <li><strong>K Number</strong> – Patient identification number (required)</li>
+                <li><strong>Phone</strong> – Contact phone number (optional)</li>
+                <li><strong>Email</strong> – Email address (optional)</li>
+                <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
+                <li><strong>Vendors</strong> – Single vendor or multiple vendors separated by commas (optional)</li>
+                <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
               </ul>
             </AlertDescription>
           </Alert>
