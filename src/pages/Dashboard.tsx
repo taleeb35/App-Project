@@ -48,7 +48,7 @@ export default function Dashboard() {
 
       const patientsRes = await sb
         .from('patients')
-        .select('id, status, is_veteran')
+        .select('id, status, patient_type')
         .eq('clinic_id', selectedClinic.id);
 
       const vendorsRes = await sb
@@ -64,7 +64,7 @@ export default function Dashboard() {
 
       const totalPatients = patientsRes.data?.length || 0;
       const activePatients = patientsRes.data?.filter((p: any) => p.status === 'active').length || 0;
-      const veterans = patientsRes.data?.filter((p: any) => p.is_veteran).length || 0;
+      const veterans = patientsRes.data?.filter((p: any) => p.patient_type === 'Veteran').length || 0;
       const civilians = totalPatients - veterans;
 
       setStats({

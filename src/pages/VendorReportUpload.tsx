@@ -161,7 +161,7 @@ export default function VendorReportUpload() {
               last_name: lastName,
               k_number: `K${Date.now()}${Math.floor(Math.random() * 1000)}`,
               prescription_status: 'active',
-              is_veteran: true,
+              patient_type: 'Veteran',
               vendor_id: selectedVendor, // Link patient to vendor
               preferred_vendor_id: selectedVendor, // Set as preferred vendor
             } as any)

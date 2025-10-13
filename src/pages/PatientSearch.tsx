@@ -17,7 +17,7 @@ type Patient = {
   email: string | null;
   address: string | null;
   status: string | null;
-  is_veteran: boolean | null;
+  patient_type: string | null;
   preferred_vendor_id: string | null;
   vendor_id: string | null;
 };
@@ -321,9 +321,9 @@ export default function PatientSearch() {
                     <div className="flex items-start gap-3">
                       <Badge className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Veteran Status</p>
-                        <Badge variant={patient.is_veteran ? 'default' : 'outline'}>
-                          {patient.is_veteran ? 'Veteran' : 'Civilian'}
+                        <p className="text-sm text-muted-foreground">Patient Type</p>
+                        <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'outline'}>
+                          {patient.patient_type}
                         </Badge>
                       </div>
                     </div>

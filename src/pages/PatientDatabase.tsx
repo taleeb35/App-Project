@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -21,7 +22,7 @@ type Patient = {
   email: string | null;
   address: string | null;
   status: string | null;
-  is_veteran: boolean | null;
+  patient_type: string | null;
   preferred_vendor_id: string | null;
   clinic_id: string;
   vendor_id: string | null;
@@ -60,7 +61,7 @@ export default function PatientDatabase() {
     phone: "",
     email: "",
     address: "",
-    is_veteran: false,
+    patient_type: "Civilian",
     clinic_id: "",
     vendor_id: "",
   });
@@ -144,7 +145,7 @@ export default function PatientDatabase() {
         phone: formData.phone || null,
         email: formData.email || null,
         address: formData.address || null,
-        is_veteran: formData.is_veteran,
+        patient_type: formData.patient_type,
         clinic_id: formData.clinic_id,
         vendor_id: formData.vendor_id || null,
         status: 'active',
@@ -166,7 +167,7 @@ export default function PatientDatabase() {
         phone: "",
         email: "",
         address: "",
-        is_veteran: false,
+        patient_type: "Civilian",
         clinic_id: "",
         vendor_id: "",
       });
@@ -190,7 +191,7 @@ export default function PatientDatabase() {
       phone: patient.phone || "",
       email: patient.email || "",
       address: patient.address || "",
-      is_veteran: patient.is_veteran || false,
+      patient_type: patient.patient_type || "Civilian",
       clinic_id: patient.clinic_id,
       vendor_id: patient.vendor_id || "",
     });
@@ -219,7 +220,7 @@ export default function PatientDatabase() {
           phone: formData.phone || null,
           email: formData.email || null,
           address: formData.address || null,
-          is_veteran: formData.is_veteran,
+          patient_type: formData.patient_type,
           clinic_id: formData.clinic_id,
           vendor_id: formData.vendor_id || null,
         })
@@ -242,7 +243,7 @@ export default function PatientDatabase() {
         phone: "",
         email: "",
         address: "",
-        is_veteran: false,
+        patient_type: "Civilian",
         clinic_id: "",
         vendor_id: "",
       });
@@ -300,8 +301,8 @@ export default function PatientDatabase() {
   const stats = {
     total: patients.length,
     active: patients.filter(p => p.status === 'active').length,
-    veterans: patients.filter(p => p.is_veteran).length,
-    civilians: patients.filter(p => !p.is_veteran).length,
+    veterans: patients.filter(p => p.patient_type === 'Veteran').length,
+    civilians: patients.filter(p => p.patient_type === 'Civilian').length,
   };
 
   return (
@@ -420,15 +421,21 @@ export default function PatientDatabase() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="col-span-2 flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="is_veteran"
-                  checked={formData.is_veteran}
-                  onChange={(e) => setFormData({ ...formData, is_veteran: e.target.checked })}
-                  className="h-4 w-4"
-                />
-                <Label htmlFor="is_veteran" className="cursor-pointer">Veteran Status</Label>
+              <div className="col-span-2 space-y-2">
+                <Label>Patient Type</Label>
+                <RadioGroup
+                  value={formData.patient_type}
+                  onValueChange={(value) => setFormData({ ...formData, patient_type: value })}
+                >
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Veteran" id="veteran" />
+                    <Label htmlFor="veteran" className="cursor-pointer">Veteran</Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value="Civilian" id="civilian" />
+                    <Label htmlFor="civilian" className="cursor-pointer">Civilian</Label>
+                  </div>
+                </RadioGroup>
               </div>
             </div>
             <DialogFooter>
@@ -562,8 +569,8 @@ export default function PatientDatabase() {
                           <p className="text-sm">{patient.phone || 'N/A'}</p>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={patient.is_veteran ? 'default' : 'outline'}>
-                            {patient.is_veteran ? 'Yes' : 'No'}
+                          <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'outline'}>
+                            {patient.patient_type}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -743,15 +750,21 @@ export default function PatientDatabase() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="edit_is_veteran"
-                checked={formData.is_veteran}
-                onChange={(e) => setFormData({ ...formData, is_veteran: e.target.checked })}
-                className="h-4 w-4"
-              />
-              <Label htmlFor="edit_is_veteran" className="cursor-pointer">Veteran Status</Label>
+            <div className="col-span-2 space-y-2">
+              <Label>Patient Type</Label>
+              <RadioGroup
+                value={formData.patient_type}
+                onValueChange={(value) => setFormData({ ...formData, patient_type: value })}
+              >
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Veteran" id="edit_veteran" />
+                  <Label htmlFor="edit_veteran" className="cursor-pointer">Veteran</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="Civilian" id="edit_civilian" />
+                  <Label htmlFor="edit_civilian" className="cursor-pointer">Civilian</Label>
+                </div>
+              </RadioGroup>
             </div>
           </div>
           <DialogFooter>

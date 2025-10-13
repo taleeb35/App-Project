@@ -211,7 +211,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
                   phone,
                   email,
                   status: patientStatus,
-                  is_veteran: isVeteran,
+                  patient_type: isVeteran ? 'Veteran' : 'Civilian',
                 } as any
               ])
               .select('id')

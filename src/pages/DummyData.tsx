@@ -72,7 +72,7 @@ export default function DummyData() {
             phone: '555-1001',
             date_of_birth: '1975-05-15',
             prescription_status: 'active',
-            is_veteran: true,
+            patient_type: 'Veteran',
             is_dummy: true,
           },
           {
@@ -84,7 +84,7 @@ export default function DummyData() {
             phone: '555-1002',
             date_of_birth: '1982-08-22',
             prescription_status: 'active',
-            is_veteran: true,
+            patient_type: 'Veteran',
             is_dummy: true,
           },
           {
@@ -96,7 +96,7 @@ export default function DummyData() {
             phone: '555-1003',
             date_of_birth: '1968-03-10',
             prescription_status: 'active',
-            is_veteran: true,
+            patient_type: 'Veteran',
             is_dummy: true,
           },
         ] as any)

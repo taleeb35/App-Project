@@ -282,7 +282,7 @@ export default function UploadClinic() {
                 email,
                 prescription_status: rxStatusRaw,
                 status: patientStatus,
-                is_veteran: isVeteran,
+                patient_type: isVeteran ? 'Veteran' : 'Civilian',
                 preferred_vendor_id: vendorIds[0] || null,
               } as any)
               .select('id')
