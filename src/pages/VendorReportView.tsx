@@ -52,7 +52,15 @@ export default function VendorReportView() {
         .order('name');
 
       if (error) throw error;
-      setVendors(data || []);
+      
+      // DE-DUPLICATION LOGIC
+      if (data) {
+        const uniqueVendors = Array.from(new Map(data.map(vendor => [vendor.name, vendor])).values());
+        setVendors(uniqueVendors);
+      } else {
+        setVendors([]);
+      }
+
     } catch (error: any) {
       toast({
         title: 'Error',
