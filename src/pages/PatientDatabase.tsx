@@ -62,7 +62,6 @@ export default function PatientDatabase() {
   const [activityFilter, setActivityFilter] = useState("all_activity");
   const [statusFilter, setStatusFilter] = useState("all_status");
   const [vendorFilter, setVendorFilter] = useState("all_vendors");
-  const [patientTypeFilter, setPatientTypeFilter] = useState("all_types"); // New state for patient type filter
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -320,7 +319,6 @@ export default function PatientDatabase() {
       const matchesKNumber = searchKNumber === "" || patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
       const matchesStatus = statusFilter === 'all_status' || patient.status === statusFilter;
       const matchesVendor = vendorFilter === 'all_vendors' || patient.preferred_vendor_id === vendorFilter;
-      const matchesPatientType = patientTypeFilter === 'all_types' || patient.patient_type === patientTypeFilter;
       
       let matchesActivity = true;
       switch(activityFilter) {
@@ -337,21 +335,28 @@ export default function PatientDatabase() {
           matchesActivity = true;
       }
       
-      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesActivity;
+      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesActivity;
     });
-  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter]);
+  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter]);
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedPatients = filteredPatients.slice(startIndex, endIndex);
+  
+  const stats = {
+    total: patients.length,
+    active: patients.filter(p => p.status === 'active').length,
+    veterans: patients.filter(p => p.patient_type === 'Veteran').length,
+    civilians: patients.filter(p => p.patient_type === 'Civilian').length,
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Patient Database</h1>
-          <p className="text-muted-foreground">Manage your clinic's patient registry and information</p>
+          <p className="text-muted-foreground">Complete patient registry and information management</p>
         </div>
         
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -360,6 +365,39 @@ export default function PatientDatabase() {
           </DialogTrigger>
           <DialogContent className="max-w-2xl">{/* Add Dialog Content */}</DialogContent>
         </Dialog>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">{stats.active} active</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Veterans</CardTitle>
+            <Badge className="h-4 w-4 text-accent" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats.veterans}</div>
+            <p className="text-xs text-muted-foreground">{stats.total > 0 ? ((stats.veterans / stats.total) * 100).toFixed(1) : 0}% of total</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Civilians</CardTitle>
+            <Badge className="h-4 w-4 text-muted" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-foreground">{stats.civilians}</div>
+            <p className="text-xs text-muted-foreground">{stats.total > 0 ? ((stats.civilians / stats.total) * 100).toFixed(1) : 0}% of total</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -396,20 +434,9 @@ export default function PatientDatabase() {
           <CardTitle className="flex items-center gap-2"><Filter className="h-5 w-5 text-primary" />Filters</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div><Label htmlFor="search_name">Search by Name</Label><Input id="search_name" placeholder="Name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} /></div>
-            <div><Label htmlFor="search_k_number">Search by K Number</Label><Input id="search_k_number" placeholder="K Number..." value={searchKNumber} onChange={(e) => setSearchKNumber(e.target.value)} /></div>
-            <div>
-              <Label htmlFor="patient_type_filter">Filter by Patient Type</Label>
-              <Select value={patientTypeFilter} onValueChange={setPatientTypeFilter}>
-                <SelectTrigger id="patient_type_filter"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all_types">All Patient Types</SelectItem>
-                  <SelectItem value="Veteran">Veterans</SelectItem>
-                  <SelectItem value="Civilian">Civilians</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div><Label htmlFor="search_name">Search by Name</Label><Input id="search_name" placeholder="Enter patient name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} /></div>
+            <div><Label htmlFor="search_k_number">Search by K Number</Label><Input id="search_k_number" placeholder="Enter K number..." value={searchKNumber} onChange={(e) => setSearchKNumber(e.target.value)} /></div>
             <div>
               <Label htmlFor="status_filter">Filter by Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -431,7 +458,7 @@ export default function PatientDatabase() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
+            <div className="col-span-1 md:col-span-2 lg:col-span-4">
                <Label htmlFor="activity_filter">Filter by Activity</Label>
                 <Select value={activityFilter} onValueChange={setActivityFilter}>
                     <SelectTrigger id="activity_filter"><SelectValue /></SelectTrigger>
