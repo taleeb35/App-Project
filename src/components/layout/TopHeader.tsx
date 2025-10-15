@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { CircleUser, LogOut } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import ClinicSelector from '../ClinicSelector';
+import { ClinicSelector } from '../ClinicSelector'; // Corrected import
 import { useClinic } from '@/contexts/ClinicContext';
 
 export default function TopHeader() {
