@@ -38,15 +38,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const getSession = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-        console.error("Error getting session:", error);
-        setLoading(false);
-        return;
-      }
-      
-      setSession(session);
+    const updateUserProfile = async (session: Session | null) => {
       if (session?.user) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
@@ -56,34 +48,25 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         if (profileError) {
           console.error("Error fetching user profile:", profileError);
+          setUser(session.user); // Fallback to basic user object
         } else {
           setUser({ ...session.user, ...profile });
         }
+      } else {
+        setUser(null);
       }
       setLoading(false);
     };
-
-    getSession();
+    
+    const { data: { session: initialSession } } = supabase.auth.getSession().then(({data}) => {
+        setSession(data.session);
+        updateUserProfile(data.session);
+    });
 
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
-        if (session?.user) {
-          const { data: profile, error: profileError } = await supabase
-            .from('users')
-            .select('app_role, clinic_id, first_name, last_name')
-            .eq('id', session.user.id)
-            .single();
-          
-          if (profileError) {
-            setUser(session.user); // Fallback to user without profile
-          } else {
-            setUser({ ...session.user, ...profile });
-          }
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
+        updateUserProfile(session);
       }
     );
 
