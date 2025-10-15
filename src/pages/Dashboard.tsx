@@ -10,7 +10,7 @@ import { Users, DollarSign, Activity } from 'lucide-react';
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export default function Dashboard() {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isAdmin } = useAuth();
   const { selectedClinic, loading: clinicLoading } = useClinic();
   const { toast } = useToast();
   
@@ -24,11 +24,17 @@ export default function Dashboard() {
   });
   const [chartData, setChartData] = useState([]);
   const [patientTypeData, setPatientTypeData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
-      setLoading(true);
+      // KEY FIX: This check ensures we have a user and a clinic before proceeding.
+      if (!user || (!selectedClinic && !isAdmin)) {
+        setPageLoading(false);
+        return;
+      }
+
+      setPageLoading(true);
       try {
         let patientQuery = supabase.from('patients').select('id, patient_type, status', { count: 'exact' });
         let reportQuery = supabase.from('vendor_reports').select('amount, patient_id, report_month, patients(patient_type)');
@@ -63,14 +69,14 @@ export default function Dashboard() {
           percentCiviliansOrdered,
         });
 
-        const monthlyData = reports?.reduce((acc, report) => {
+        const monthlyData = (reports || []).reduce((acc, report) => {
           const month = new Date(report.report_month).toLocaleString('default', { month: 'short', year: 'numeric' });
           if (!acc[month]) acc[month] = 0;
           acc[month] += (report.amount || 0);
           return acc;
         }, {});
         
-        const formattedChartData = Object.keys(monthlyData || {}).map(month => ({ name: month, total: monthlyData[month] })).slice(-12);
+        const formattedChartData = Object.keys(monthlyData).map(month => ({ name: month, total: monthlyData[month] })).slice(-12);
         
         setChartData(formattedChartData);
         setPatientTypeData([
@@ -79,34 +85,27 @@ export default function Dashboard() {
         ]);
 
       } catch (error: any) {
-        console.error("Dashboard Page Error:", error);
-        toast({
-          title: 'Error Loading Dashboard',
-          description: error.message,
-          variant: 'destructive',
-        });
+        toast({ title: 'Error Loading Dashboard', description: error.message, variant: 'destructive' });
       } finally {
-        setLoading(false);
+        setPageLoading(false);
       }
     };
     
-    // This condition is the key fix: only run when both user and clinic contexts are done loading
+    // KEY FIX: Only run the fetch function when both contexts are done loading.
     if (!authLoading && !clinicLoading) {
       fetchDashboardData();
     }
-  }, [user, selectedClinic, authLoading, clinicLoading, toast]);
+  }, [user, selectedClinic, authLoading, clinicLoading, toast, isAdmin]);
 
-  // Show a loading spinner while waiting for user and clinic data
-  if (authLoading || clinicLoading || loading) {
+  if (authLoading || clinicLoading || pageLoading) {
     return <div className="flex justify-center items-center h-64"><div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div></div>;
   }
   
-  // A clean state for when there is no data
-  if (stats.totalPatients === 0 && chartData.length === 0) {
+  if (!selectedClinic && !isAdmin) {
       return (
           <div className="text-center py-10">
-              <h2 className="text-2xl font-semibold">Welcome!</h2>
-              <p className="text-muted-foreground mt-2">There is no data to display for this clinic yet. Start by uploading a vendor report.</p>
+              <h2 className="text-2xl font-semibold">No Clinic Selected</h2>
+              <p className="text-muted-foreground mt-2">Please select a clinic to view its dashboard.</p>
           </div>
       )
   }
@@ -116,27 +115,15 @@ export default function Dashboard() {
       <div>
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground">
-          {selectedClinic ? `Showing data for ${selectedClinic.name}` : "Showing data for All Clinics"}
+          {selectedClinic ? `Showing data for ${selectedClinic.name}` : "Showing overview for All Clinics"}
         </p>
       </div>
       
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Revenue</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">${stats.totalSpent.toFixed(2)}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Patients</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{stats.totalVeterans + stats.totalCivilians}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Veterans Activity</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{stats.percentVeteransOrdered.toFixed(1)}%</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Civilians Activity</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{stats.percentCiviliansOrdered.toFixed(1)}%</div></CardContent>
-        </Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Total Revenue</CardTitle><DollarSign className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">${stats.totalSpent.toFixed(2)}</div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Active Patients</CardTitle><Users className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.totalVeterans + stats.totalCivilians}</div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Veterans Activity</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.percentVeteransOrdered.toFixed(1)}%</div></CardContent></Card>
+        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Civilians Activity</CardTitle><Activity className="h-4 w-4 text-muted-foreground" /></CardHeader><CardContent><div className="text-2xl font-bold">{stats.percentCiviliansOrdered.toFixed(1)}%</div></CardContent></Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
@@ -144,7 +131,7 @@ export default function Dashboard() {
           <CardHeader><CardTitle>Monthly Revenue</CardTitle></CardHeader>
           <CardContent className="pl-2">
             <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis tickFormatter={(value) => `$${value}`} /><Tooltip formatter={(value) => `$${value.toFixed(2)}`} /><Bar dataKey="total" fill="#16a34a" radius={[4, 4, 0, 0]} /></BarChart>
+              <BarChart data={chartData}><CartesianGrid strokeDasharray="3 3" /><XAxis dataKey="name" /><YAxis tickFormatter={(value) => `$${value}`} /><Tooltip formatter={(value) => `$${(value as number).toFixed(2)}`} /><Bar dataKey="total" fill="#16a34a" radius={[4, 4, 0, 0]} /></BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
