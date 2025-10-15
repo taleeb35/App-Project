@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 type Clinic = {
   id: string;
@@ -23,42 +24,58 @@ const ClinicContext = createContext<ClinicContextType>({
 
 export const ClinicProvider = ({ children }: { children: React.ReactNode }) => {
   const { user, isAdmin, loading: authLoading } = useAuth();
+  const { toast } = useToast();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [selectedClinic, setSelectedClinicState] = useState<Clinic | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return; // Wait for authentication to resolve
+    // Wait for authentication to finish before doing anything
+    if (authLoading) {
+      return;
+    }
 
-    const fetchClinics = async () => {
+    const fetchClinicsForUser = async () => {
       setLoading(true);
-      if (isAdmin) {
-        // Super Admin: fetch all clinics
-        const { data, error } = await supabase.from('clinics').select('*').order('name');
-        if (data) {
-          setClinics(data);
-          // Try to load last selected clinic from storage, otherwise default to null (All Clinics)
+      try {
+        if (isAdmin) {
+          // SUPER ADMIN: Fetch all clinics
+          const { data, error } = await supabase.from('clinics').select('*').order('name');
+          if (error) throw error;
+          
+          setClinics(data || []);
           const storedClinicId = localStorage.getItem('selectedClinicId');
-          const foundClinic = data.find(c => c.id === storedClinicId);
-          setSelectedClinicState(foundClinic || null);
+          const foundClinic = data?.find(c => c.id === storedClinicId);
+          setSelectedClinicState(foundClinic || null); // Default to "All Clinics"
+        
+        } else if (user?.clinic_id) {
+          // SUB ADMIN: Fetch only their assigned clinic
+          const { data, error } = await supabase.from('clinics').select('*').eq('id', user.clinic_id).single();
+          if (error) throw error;
+          
+          if (data) {
+            setClinics([data]);
+            setSelectedClinicState(data); // Auto-select their clinic
+          }
+        } else {
+          // No user or no assigned clinic, so clear data
+          setClinics([]);
+          setSelectedClinicState(null);
         }
-      } else if (user?.clinic_id) {
-        // Sub Admin: fetch only their assigned clinic
-        const { data, error } = await supabase.from('clinics').select('*').eq('id', user.clinic_id).single();
-        if (data) {
-          setClinics([data]);
-          setSelectedClinicState(data); // Automatically select and lock to their clinic
-        }
-      } else {
-        // No user or no clinic_id, clear everything
-        setClinics([]);
-        setSelectedClinicState(null);
+      } catch (error: any) {
+        console.error("ClinicContext Error: Failed to fetch clinics.", error);
+        toast({
+          title: "Error Loading Clinic Data",
+          description: error.message,
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
-    fetchClinics();
-  }, [user, isAdmin, authLoading]);
+    fetchClinicsForUser();
+  }, [user, isAdmin, authLoading, toast]);
 
   const setSelectedClinic = (clinic: Clinic | null) => {
     setSelectedClinicState(clinic);
