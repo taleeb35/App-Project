@@ -8,6 +8,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
+import SuperAdminDashboard from "./pages/SuperAdminDashboard";
 import PatientDatabase from "./pages/PatientDatabase";
 import PatientSearch from "./pages/PatientSearch";
 import UploadClinic from "./pages/UploadClinic";
@@ -37,6 +38,7 @@ const App = () => (
           <Routes>
             <Route path="/auth" element={<Auth />} />
             <Route path="/" element={<ProtectedRoute><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
+            <Route path="/super-admin" element={<ProtectedRoute><AdminLayout><SuperAdminDashboard /></AdminLayout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
             <Route path="/patients/search" element={<ProtectedRoute><AdminLayout><PatientSearch /></AdminLayout></ProtectedRoute>} />

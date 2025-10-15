@@ -1,14 +1,16 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Settings, LogOut } from "lucide-react";
+import { Bell, Settings, LogOut, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export function TopHeader() {
   const notifications = 3;
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
+  const { isAdmin } = useUserRole();
 
   const handleSignOut = async () => {
     await signOut();
@@ -22,7 +24,14 @@ export function TopHeader() {
         
         <div className="flex items-center gap-3">
           <h1 className="text-xl font-semibold text-foreground">Patient Management System</h1>
-          <Badge variant="secondary" className="bg-primary/10 text-primary">Admin</Badge>
+          {isAdmin ? (
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <Crown className="h-3 w-3 mr-1" />
+              Super Admin
+            </Badge>
+          ) : (
+            <Badge variant="secondary" className="bg-primary/10 text-primary">Admin</Badge>
+          )}
         </div>
       </div>
 

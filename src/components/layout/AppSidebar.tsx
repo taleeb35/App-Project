@@ -22,9 +22,11 @@ import {
   TestTube,
   Pill,
   Download,
+  Crown,
 } from "lucide-react";
+import { useUserRole } from "@/hooks/useUserRole";
 
-const navigationItems = [
+const regularNavigationItems = [
   {
     title: "Overview",
     items: [
@@ -47,11 +49,37 @@ const navigationItems = [
   },
 ];
 
+const superAdminNavigationItems = [
+  {
+    title: "Super Admin",
+    items: [
+      { title: "Super Admin Dashboard", url: "/super-admin", icon: Crown },
+    ],
+  },
+  {
+    title: "Management",
+    items: [
+      { title: "Manage Clinics", url: "/clinics", icon: Building2 },
+      { title: "Manage Employees", url: "/employees", icon: Users },
+    ],
+  },
+  {
+    title: "Overview",
+    items: [
+      { title: "All Vendors", url: "/vendors", icon: Package },
+      { title: "All Patients", url: "/patients", icon: DatabaseIcon },
+    ],
+  },
+];
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const collapsed = state === "collapsed";
+  const { isAdmin, loading } = useUserRole();
+
+  const navigationItems = isAdmin ? superAdminNavigationItems : regularNavigationItems;
 
   const isActive = (path: string) => {
     if (path === "/" && currentPath === "/") return true;
@@ -59,6 +87,10 @@ export function AppSidebar() {
       // Exact match for vendor reports to avoid highlighting both tabs
       if (path === "/vendors/reports") {
         return currentPath === path || currentPath.startsWith(path + "/");
+      }
+      // Special handling for super admin dashboard
+      if (path === "/super-admin") {
+        return currentPath === path;
       }
       return currentPath === path || (currentPath.startsWith(path) && !currentPath.includes("/reports"));
     }
@@ -71,6 +103,16 @@ export function AppSidebar() {
       : "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
   };
 
+  if (loading) {
+    return (
+      <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
+        <SidebarContent className="bg-card border-r">
+          <div className="p-4">Loading...</div>
+        </SidebarContent>
+      </Sidebar>
+    );
+  }
+
   return (
     <Sidebar className={collapsed ? "w-16" : "w-64"} collapsible="icon">
       <SidebarContent className="bg-card border-r">
@@ -79,13 +121,15 @@ export function AppSidebar() {
           {!collapsed ? (
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <Pill className="w-4 h-4 text-primary-foreground" />
+                {isAdmin ? <Crown className="w-4 h-4 text-primary-foreground" /> : <Pill className="w-4 h-4 text-primary-foreground" />}
               </div>
-              <span className="font-semibold text-foreground">MediCann Admin</span>
+              <span className="font-semibold text-foreground">
+                {isAdmin ? "Super Admin" : "MediCann Admin"}
+              </span>
             </div>
           ) : (
             <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto">
-              <Pill className="w-4 h-4 text-primary-foreground" />
+              {isAdmin ? <Crown className="w-4 h-4 text-primary-foreground" /> : <Pill className="w-4 h-4 text-primary-foreground" />}
             </div>
           )}
         </div>
