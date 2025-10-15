@@ -62,7 +62,7 @@ export default function PatientDatabase() {
   const [activityFilter, setActivityFilter] = useState("all_activity");
   const [statusFilter, setStatusFilter] = useState("all_status");
   const [vendorFilter, setVendorFilter] = useState("all_vendors");
-  const [patientTypeFilter, setPatientTypeFilter] = useState("all_types"); // New state for patient type filter
+  const [patientTypeFilter, setPatientTypeFilter] = useState("all_types");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -228,6 +228,7 @@ export default function PatientDatabase() {
     if (!confirm("Are you sure you want to delete this patient?")) return;
 
     try {
+      await supabase.from('vendor_reports').delete().eq('patient_id', id);
       const { error } = await supabase.from('patients').delete().eq('id', id);
       if (error) throw error;
       toast({ title: "Success", description: "Patient deleted successfully" });
@@ -272,7 +273,6 @@ export default function PatientDatabase() {
 
   const monthlyStats = useMemo(() => {
     const statsByMonth: { [key: string]: any } = {};
-
     reports.forEach(report => {
       const month = report.report_month.slice(0, 7);
       if (!statsByMonth[month]) {
@@ -284,7 +284,6 @@ export default function PatientDatabase() {
           civilianPurchaseTotal: 0,
         };
       }
-
       const patient = processedPatients.find(p => p.id === report.patient_id);
       if (patient) {
         if (patient.patient_type === 'Veteran') {
@@ -296,7 +295,6 @@ export default function PatientDatabase() {
         }
       }
     });
-
     const activeVeterans = processedPatients.filter(p => p.status === 'active' && p.patient_type === 'Veteran').length;
     const activeCivilians = processedPatients.filter(p => p.status === 'active' && p.patient_type !== 'Veteran').length;
 
@@ -358,7 +356,37 @@ export default function PatientDatabase() {
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" /> Add Patient</Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">{/* Add Dialog Content */}</DialogContent>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add New Patient</DialogTitle>
+              <DialogDescription>Enter the details for the new patient.</DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-4">
+              <div><Label htmlFor="add_first_name">First Name *</Label><Input id="add_first_name" value={formData.first_name} onChange={(e) => setFormData({ ...formData, first_name: e.target.value })} /></div>
+              <div><Label htmlFor="add_last_name">Last Name *</Label><Input id="add_last_name" value={formData.last_name} onChange={(e) => setFormData({ ...formData, last_name: e.target.value })} /></div>
+              <div><Label htmlFor="add_k_number">K Number *</Label><Input id="add_k_number" value={formData.k_number} onChange={(e) => setFormData({ ...formData, k_number: e.target.value })} /></div>
+              <div><Label htmlFor="add_date_of_birth">Date of Birth</Label><Input id="add_date_of_birth" type="date" value={formData.date_of_birth} onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })} /></div>
+              <div><Label htmlFor="add_phone">Phone</Label><Input id="add_phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
+              <div><Label htmlFor="add_email">Email</Label><Input id="add_email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
+              <div className="col-span-2"><Label htmlFor="add_address">Address</Label><Input id="add_address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
+              <div><Label htmlFor="add_vendor_id">Preferred Vendor</Label>
+                <Select value={formData.preferred_vendor_id} onValueChange={(value) => setFormData({ ...formData, preferred_vendor_id: value })}>
+                  <SelectTrigger><SelectValue placeholder="Select vendor"/></SelectTrigger>
+                  <SelectContent>{vendors.map((vendor) => (<SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>))}</SelectContent>
+                </Select>
+              </div>
+              <div className="col-span-2 space-y-2"><Label>Patient Type</Label>
+                <RadioGroup value={formData.patient_type} onValueChange={(value) => setFormData({ ...formData, patient_type: value })}>
+                  <div className="flex items-center space-x-2"><RadioGroupItem value="Veteran" id="add_veteran" /><Label htmlFor="add_veteran">Veteran</Label></div>
+                  <div className="flex items-center space-x-2"><RadioGroupItem value="Civilian" id="add_civilian" /><Label htmlFor="add_civilian">Civilian</Label></div>
+                </RadioGroup>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddPatient}>Add Patient</Button>
+            </DialogFooter>
+          </DialogContent>
         </Dialog>
       </div>
 
@@ -500,7 +528,25 @@ export default function PatientDatabase() {
               </Table>
               
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-4">{/* ... pagination ... */}</div>
+                <div className="flex items-center justify-between mt-4">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-muted-foreground">Page {currentPage} of {totalPages}</p>
+                    <Select value={itemsPerPage.toString()} onValueChange={(value) => { setItemsPerPage(Number(value)); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="75">75</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span className="text-sm text-muted-foreground">per page</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}><ChevronLeft className="h-4 w-4" />Previous</Button>
+                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>Next<ChevronRight className="h-4 w-4" /></Button>
+                  </div>
+                </div>
               )}
             </>
           )}
@@ -521,14 +567,9 @@ export default function PatientDatabase() {
             <div><Label htmlFor="edit_phone">Phone</Label><Input id="edit_phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
             <div><Label htmlFor="edit_email">Email</Label><Input id="edit_email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
             <div className="col-span-2"><Label htmlFor="edit_address">Address</Label><Input id="edit_address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
-            <div><Label htmlFor="edit_clinic_id">Clinic *</Label>
-              <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{clinics.map((clinic) => (<SelectItem key={clinic.id} value={clinic.id}>{clinic.name}</SelectItem>))}</SelectContent>
-              </Select>
-            </div>
-            <div><Label htmlFor="edit_vendor_id">Preferred Vendor</Label>
-              <Select value={formData.preferred_vendor_id} onValueChange={(value) => setFormData({ ...formData, preferred_vendor_id: value })}>
+            <div>
+              <Label htmlFor="edit_vendor_id">Preferred Vendor</Label>
+              <Select value={formData.preferred_vendor_id || ""} onValueChange={(value) => setFormData({ ...formData, preferred_vendor_id: value })}>
                 <SelectTrigger><SelectValue placeholder="Select vendor"/></SelectTrigger>
                 <SelectContent>{vendors.map((vendor) => (<SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>))}</SelectContent>
               </Select>
