@@ -28,7 +28,7 @@ BEGIN
         UPDATE public.users
         SET app_role = 'admin'
         WHERE id = user_id;
-    END IF;
+    END IF; 
 
 END $$;
 
