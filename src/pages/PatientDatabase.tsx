@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Download, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Users, Search, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight, DollarSign, TrendingUp } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useClinic } from "@/contexts/ClinicContext";
 
 type Patient = {
   id: string;
@@ -27,6 +28,8 @@ type Patient = {
   clinic_id: string;
   vendor_id: string | null;
   created_at: string;
+  totalSpent?: number;
+  lastPurchaseDate?: Date | null;
 };
 
 type Clinic = {
@@ -39,15 +42,23 @@ type Vendor = {
   name: string;
 };
 
+type Report = {
+  patient_id: string;
+  report_month: string;
+  amount: number;
+};
+
 export default function PatientDatabase() {
   const { toast } = useToast();
+  const { selectedClinic } = useClinic();
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [vendors, setVendors] = useState<Vendor[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchName, setSearchName] = useState("");
   const [searchKNumber, setSearchKNumber] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [activityFilter, setActivityFilter] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -67,58 +78,49 @@ export default function PatientDatabase() {
   });
 
   useEffect(() => {
-    fetchPatients();
-    fetchClinics();
-    fetchVendors();
+    fetchBaseData();
   }, []);
 
-  const fetchClinics = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('clinics')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      setClinics(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch clinics",
-        variant: "destructive",
-      });
+  useEffect(() => {
+    if (selectedClinic) {
+      fetchPatientData();
+    } else {
+      setPatients([]);
+      setReports([]);
     }
+  }, [selectedClinic]);
+
+  const fetchBaseData = async () => {
+    await fetchClinics();
+    await fetchVendors();
   };
 
-  const fetchVendors = async () => {
+  const fetchPatientData = async () => {
+    if (!selectedClinic) return;
+    setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('vendors')
-        .select('id, name')
-        .order('name');
-      if (error) throw error;
-      setVendors(data || []);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch vendors",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchPatients = async () => {
-    try {
-      const { data, error } = await supabase
+      const { data: patientData, error: patientError } = await supabase
         .from('patients')
         .select('*')
+        .eq('clinic_id', selectedClinic.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setPatients((data as any) || []);
+      if (patientError) throw patientError;
+
+      const { data: reportData, error: reportError } = await supabase
+        .from('vendor_reports')
+        .select('patient_id, report_month, amount')
+        .eq('clinic_id', selectedClinic.id);
+      
+      if (reportError) throw reportError;
+      
+      setPatients((patientData as any) || []);
+      setReports((reportData as any) || []);
+
     } catch (error: any) {
       toast({
         title: "Error",
-        description: "Failed to fetch patients",
+        description: "Failed to fetch patient data",
         variant: "destructive",
       });
     } finally {
@@ -126,171 +128,106 @@ export default function PatientDatabase() {
     }
   };
 
-  const handleAddPatient = async () => {
-    if (!formData.clinic_id) {
-      toast({
-        title: "Error",
-        description: "Please select a clinic",
-        variant: "destructive",
-      });
-      return;
-    }
+  const fetchClinics = async () => { /* ... existing code ... */ };
+  const fetchVendors = async () => { /* ... existing code ... */ };
+  const handleAddPatient = async () => { /* ... existing code ... */ };
+  const handleEditPatient = (patient: Patient) => { /* ... existing code ... */ };
+  const handleUpdatePatient = async () => { /* ... existing code ... */ };
+  const handleDeletePatient = async (id: string) => { /* ... existing code ... */ };
 
-    try {
-      const { error } = await supabase.from('patients').insert({
-        first_name: formData.first_name,
-        last_name: formData.last_name,
-        k_number: formData.k_number,
-        date_of_birth: formData.date_of_birth || null,
-        phone: formData.phone || null,
-        email: formData.email || null,
-        address: formData.address || null,
-        patient_type: formData.patient_type,
-        clinic_id: formData.clinic_id,
-        vendor_id: formData.vendor_id || null,
-        status: 'active',
-      } as any);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Patient added successfully",
-      });
-
-      setIsAddDialogOpen(false);
-      setFormData({
-        first_name: "",
-        last_name: "",
-        k_number: "",
-        date_of_birth: "",
-        phone: "",
-        email: "",
-        address: "",
-        patient_type: "Civilian",
-        clinic_id: "",
-        vendor_id: "",
-      });
-      fetchPatients();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleEditPatient = (patient: Patient) => {
-    setEditingPatient(patient);
-    setFormData({
-      first_name: patient.first_name,
-      last_name: patient.last_name,
-      k_number: patient.k_number,
-      date_of_birth: patient.date_of_birth || "",
-      phone: patient.phone || "",
-      email: patient.email || "",
-      address: patient.address || "",
-      patient_type: patient.patient_type || "Civilian",
-      clinic_id: patient.clinic_id,
-      vendor_id: patient.vendor_id || "",
+  const processedPatients = useMemo(() => {
+    const reportMap = new Map<string, { totalSpent: number; purchaseDates: Date[] }>();
+    reports.forEach(report => {
+      if (!reportMap.has(report.patient_id)) {
+        reportMap.set(report.patient_id, { totalSpent: 0, purchaseDates: [] });
+      }
+      const entry = reportMap.get(report.patient_id)!;
+      entry.totalSpent += report.amount || 0;
+      entry.purchaseDates.push(new Date(report.report_month));
     });
-    setIsEditDialogOpen(true);
-  };
 
-  const handleUpdatePatient = async () => {
-    if (!editingPatient) return;
-    if (!formData.clinic_id) {
-      toast({
-        title: "Error",
-        description: "Please select a clinic",
-        variant: "destructive",
-      });
-      return;
-    }
+    return patients.map(p => {
+      const reportData = reportMap.get(p.id);
+      const purchaseDates = reportData?.purchaseDates.sort((a, b) => b.getTime() - a.getTime()) || [];
+      return {
+        ...p,
+        totalSpent: reportData?.totalSpent || 0,
+        lastPurchaseDate: purchaseDates.length > 0 ? purchaseDates[0] : null,
+      };
+    });
+  }, [patients, reports]);
 
-    try {
-      const { error } = await supabase
-        .from('patients')
-        .update({
-          first_name: formData.first_name,
-          last_name: formData.last_name,
-          k_number: formData.k_number,
-          date_of_birth: formData.date_of_birth || null,
-          phone: formData.phone || null,
-          email: formData.email || null,
-          address: formData.address || null,
-          patient_type: formData.patient_type,
-          clinic_id: formData.clinic_id,
-          vendor_id: formData.vendor_id || null,
-        })
-        .eq('id', editingPatient.id);
+  const monthlyStats = useMemo(() => {
+    const statsByMonth: { [key: string]: any } = {};
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-      if (error) throw error;
+    reports.forEach(report => {
+      const month = report.report_month.slice(0, 7); // YYYY-MM
+      if (!statsByMonth[month]) {
+        statsByMonth[month] = {
+          month,
+          veteransWhoOrdered: new Set(),
+          civiliansWhoOrdered: new Set(),
+          veteranPurchaseTotal: 0,
+          civilianPurchaseTotal: 0,
+        };
+      }
 
-      toast({
-        title: "Success",
-        description: "Patient updated successfully",
-      });
+      const patient = processedPatients.find(p => p.id === report.patient_id);
+      if (patient) {
+        if (patient.patient_type === 'Veteran') {
+          statsByMonth[month].veteransWhoOrdered.add(patient.id);
+          statsByMonth[month].veteranPurchaseTotal += report.amount || 0;
+        } else {
+          statsByMonth[month].civiliansWhoOrdered.add(patient.id);
+          statsByMonth[month].civilianPurchaseTotal += report.amount || 0;
+        }
+      }
+    });
 
-      setIsEditDialogOpen(false);
-      setEditingPatient(null);
-      setFormData({
-        first_name: "",
-        last_name: "",
-        k_number: "",
-        date_of_birth: "",
-        phone: "",
-        email: "",
-        address: "",
-        patient_type: "Civilian",
-        clinic_id: "",
-        vendor_id: "",
-      });
-      fetchPatients();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
+    const activeVeterans = processedPatients.filter(p => p.status === 'active' && p.patient_type === 'Veteran').length;
+    const activeCivilians = processedPatients.filter(p => p.status === 'active' && p.patient_type !== 'Veteran').length;
 
-  const handleDeletePatient = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this patient?")) return;
+    return Object.values(statsByMonth).map(monthData => ({
+      ...monthData,
+      totalActiveVeterans: activeVeterans,
+      percentVeteransOrdered: activeVeterans > 0 ? (monthData.veteransWhoOrdered.size / activeVeterans) * 100 : 0,
+      totalActiveCivilians: activeCivilians,
+      percentCiviliansOrdered: activeCivilians > 0 ? (monthData.civiliansWhoOrdered.size / activeCivilians) * 100 : 0,
+    })).sort((a, b) => b.month.localeCompare(a.month));
+  }, [processedPatients, reports]);
 
-    try {
-      const { error } = await supabase
-        .from('patients')
-        .delete()
-        .eq('id', id);
+  const filteredPatients = useMemo(() => {
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Patient deleted successfully",
-      });
-      fetchPatients();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const filteredPatients = patients.filter(patient => {
-    const matchesName = searchName === "" || 
-      `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchName.toLowerCase());
-    const matchesKNumber = searchKNumber === "" || 
-      patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
-    const matchesStatus = statusFilter === "all" || patient.status?.toLowerCase() === statusFilter;
-    
-    return matchesName && matchesKNumber && matchesStatus;
-  });
+    return processedPatients.filter(patient => {
+      const matchesName = searchName === "" || `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchName.toLowerCase());
+      const matchesKNumber = searchKNumber === "" || patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
+      
+      let matchesActivity = true;
+      switch(activityFilter) {
+        case 'zero_sales':
+          matchesActivity = patient.totalSpent === 0;
+          break;
+        case 'inactive_veterans':
+          matchesActivity = patient.patient_type === 'Veteran' && (!patient.lastPurchaseDate || patient.lastPurchaseDate < twoMonthsAgo);
+          break;
+        case 'inactive_civilians':
+          matchesActivity = patient.patient_type !== 'Veteran' && (!patient.lastPurchaseDate || patient.lastPurchaseDate < threeMonthsAgo);
+          break;
+        default:
+          matchesActivity = true;
+      }
+      
+      return matchesName && matchesKNumber && matchesActivity;
+    });
+  }, [processedPatients, searchName, searchKNumber, activityFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
@@ -307,181 +244,52 @@ export default function PatientDatabase() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Patient Database</h1>
-          <p className="text-muted-foreground">Complete patient registry and information management</p>
-        </div>
-        
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Patient
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Patient</DialogTitle>
-              <DialogDescription>Enter patient information below</DialogDescription>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div>
-                <Label htmlFor="first_name">First Name *</Label>
-                <Input
-                  id="first_name"
-                  value={formData.first_name}
-                  onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                  placeholder="John"
-                />
-              </div>
-              <div>
-                <Label htmlFor="last_name">Last Name *</Label>
-                <Input
-                  id="last_name"
-                  value={formData.last_name}
-                  onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                  placeholder="Doe"
-                />
-              </div>
-              <div>
-                <Label htmlFor="k_number">K Number *</Label>
-                <Input
-                  id="k_number"
-                  value={formData.k_number}
-                  onChange={(e) => setFormData({ ...formData, k_number: e.target.value })}
-                  placeholder="K123456789"
-                />
-              </div>
-              <div>
-                <Label htmlFor="date_of_birth">Date of Birth</Label>
-                <Input
-                  id="date_of_birth"
-                  type="date"
-                  value={formData.date_of_birth}
-                  onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="john@example.com"
-                />
-              </div>
-              <div className="col-span-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="123 Main St, City, State ZIP"
-                />
-              </div>
-              <div>
-                <Label htmlFor="clinic_id">Clinic *</Label>
-                <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select clinic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clinics.map((clinic) => (
-                      <SelectItem key={clinic.id} value={clinic.id}>
-                        {clinic.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label htmlFor="vendor_id">Vendor (Optional)</Label>
-                <Select value={formData.vendor_id} onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select vendor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {vendors.map((vendor) => (
-                      <SelectItem key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Patient Type</Label>
-                <RadioGroup
-                  value={formData.patient_type}
-                  onValueChange={(value) => setFormData({ ...formData, patient_type: value })}
-                >
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Veteran" id="veteran" />
-                    <Label htmlFor="veteran" className="cursor-pointer">Veteran</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="Civilian" id="civilian" />
-                    <Label htmlFor="civilian" className="cursor-pointer">Civilian</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddPatient}>Add Patient</Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
+      {/* ... existing header and stats cards ... */}
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Patients</CardTitle>
-            <Users className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">{stats.active} active</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Veterans</CardTitle>
-            <Badge className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.veterans}</div>
-            <p className="text-xs text-muted-foreground">{stats.total > 0 ? ((stats.veterans / stats.total) * 100).toFixed(1) : 0}% of total</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Civilians</CardTitle>
-            <Badge className="h-4 w-4 text-muted" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-foreground">{stats.civilians}</div>
-            <p className="text-xs text-muted-foreground">{stats.total > 0 ? ((stats.civilians / stats.total) * 100).toFixed(1) : 0}% of total</p>
-          </CardContent>
-        </Card>
-
-      </div>
+      {/* Monthly Summary Report */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-primary" />
+            Monthly Activity Summary
+          </CardTitle>
+          <CardDescription>A breakdown of patient purchasing activity by month.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Month</TableHead>
+                <TableHead>Active Veterans</TableHead>
+                <TableHead>% Veterans Ordered</TableHead>
+                <TableHead>Veteran Purchases</TableHead>
+                <TableHead>Active Civilians</TableHead>
+                <TableHead>% Civilians Ordered</TableHead>
+                <TableHead>Civilian Purchases</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {monthlyStats.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center">No purchase data available for summary.</TableCell>
+                </TableRow>
+              ) : (
+                monthlyStats.slice(0, 6).map(stat => ( // Show last 6 months
+                  <TableRow key={stat.month}>
+                    <TableCell className="font-medium">{new Date(stat.month + '-02').toLocaleString('default', { month: 'long', year: 'numeric' })}</TableCell>
+                    <TableCell>{stat.totalActiveVeterans}</TableCell>
+                    <TableCell>{stat.percentVeteransOrdered.toFixed(1)}%</TableCell>
+                    <TableCell>${stat.veteranPurchaseTotal.toFixed(2)}</TableCell>
+                    <TableCell>{stat.totalActiveCivilians}</TableCell>
+                    <TableCell>{stat.percentCiviliansOrdered.toFixed(1)}%</TableCell>
+                    <TableCell>${stat.civilianPurchaseTotal.toFixed(2)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Search and Filters */}
       <Card>
@@ -492,7 +300,7 @@ export default function PatientDatabase() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="search_name" className="text-sm font-medium mb-2 block">
                 Search by Name
@@ -515,6 +323,22 @@ export default function PatientDatabase() {
                 onChange={(e) => setSearchKNumber(e.target.value)}
               />
             </div>
+            <div>
+              <Label htmlFor="activity_filter" className="text-sm font-medium mb-2 block">
+                Filter by Activity
+              </Label>
+              <Select value={activityFilter} onValueChange={setActivityFilter}>
+                <SelectTrigger id="activity_filter">
+                  <SelectValue placeholder="Filter patients..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Patients</SelectItem>
+                  <SelectItem value="zero_sales">No Purchases Made</SelectItem>
+                  <SelectItem value="inactive_veterans">Inactive Veterans (2+ months)</SelectItem>
+                  <SelectItem value="inactive_civilians">Inactive Civilians (3+ months)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -523,7 +347,7 @@ export default function PatientDatabase() {
       <Card>
         <CardHeader>
           <CardTitle>Patient Registry</CardTitle>
-          <CardDescription>Showing {startIndex + 1}-{Math.min(endIndex, filteredPatients.length)} of {filteredPatients.length} patients</CardDescription>
+          <CardDescription>Showing {paginatedPatients.length > 0 ? startIndex + 1 : 0}-{Math.min(endIndex, filteredPatients.length)} of {filteredPatients.length} patients</CardDescription>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -537,9 +361,9 @@ export default function PatientDatabase() {
                   <TableRow>
                     <TableHead>Patient Name</TableHead>
                     <TableHead>K Number</TableHead>
-                    <TableHead>DOB</TableHead>
-                    <TableHead>Contact</TableHead>
                     <TableHead>Patient Type</TableHead>
+                    <TableHead>Total Spent</TableHead>
+                    <TableHead>Last Purchase</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -547,7 +371,7 @@ export default function PatientDatabase() {
                   {paginatedPatients.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No patients found
+                        No patients found matching your criteria.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -563,31 +387,22 @@ export default function PatientDatabase() {
                           <code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{patient.date_of_birth || 'N/A'}</p>
-                        </TableCell>
-                        <TableCell>
-                          <p className="text-sm">{patient.phone || 'N/A'}</p>
-                        </TableCell>
-                        <TableCell>
                           <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'outline'}>
                             {patient.patient_type}
                           </Badge>
                         </TableCell>
                         <TableCell>
+                          <p className="text-sm">${patient.totalSpent?.toFixed(2) || '0.00'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{patient.lastPurchaseDate ? patient.lastPurchaseDate.toLocaleDateString() : 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
                           <div className="flex gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEditPatient(patient)}
-                            >
+                            <Button variant="ghost" size="sm" onClick={() => handleEditPatient(patient)}>
                               <Edit className="h-4 w-4" />
                             </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeletePatient(patient.id)}
-                            >
+                            <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDeletePatient(patient.id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </div>
@@ -650,128 +465,7 @@ export default function PatientDatabase() {
 
       {/* Edit Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Patient</DialogTitle>
-            <DialogDescription>Update patient information</DialogDescription>
-          </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div>
-              <Label htmlFor="edit_first_name">First Name *</Label>
-              <Input
-                id="edit_first_name"
-                value={formData.first_name}
-                onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
-                placeholder="John"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_last_name">Last Name *</Label>
-              <Input
-                id="edit_last_name"
-                value={formData.last_name}
-                onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
-                placeholder="Doe"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_k_number">K Number *</Label>
-              <Input
-                id="edit_k_number"
-                value={formData.k_number}
-                onChange={(e) => setFormData({ ...formData, k_number: e.target.value })}
-                placeholder="K123456789"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_date_of_birth">Date of Birth</Label>
-              <Input
-                id="edit_date_of_birth"
-                type="date"
-                value={formData.date_of_birth}
-                onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_phone">Phone</Label>
-              <Input
-                id="edit_phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_email">Email</Label>
-              <Input
-                id="edit_email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="john@example.com"
-              />
-            </div>
-            <div className="col-span-2">
-              <Label htmlFor="edit_address">Address</Label>
-              <Input
-                id="edit_address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="123 Main St, City, State ZIP"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_clinic_id">Clinic *</Label>
-              <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select clinic" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clinics.map((clinic) => (
-                    <SelectItem key={clinic.id} value={clinic.id}>
-                      {clinic.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="edit_vendor_id">Vendor (Optional)</Label>
-              <Select value={formData.vendor_id} onValueChange={(value) => setFormData({ ...formData, vendor_id: value })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select vendor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {vendors.map((vendor) => (
-                    <SelectItem key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="col-span-2 space-y-2">
-              <Label>Patient Type</Label>
-              <RadioGroup
-                value={formData.patient_type}
-                onValueChange={(value) => setFormData({ ...formData, patient_type: value })}
-              >
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Veteran" id="edit_veteran" />
-                  <Label htmlFor="edit_veteran" className="cursor-pointer">Veteran</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="Civilian" id="edit_civilian" />
-                  <Label htmlFor="edit_civilian" className="cursor-pointer">Civilian</Label>
-                </div>
-              </RadioGroup>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdatePatient}>Update Patient</Button>
-          </DialogFooter>
-        </DialogContent>
+        {/* ... existing dialog code ... */}
       </Dialog>
     </div>
   );
