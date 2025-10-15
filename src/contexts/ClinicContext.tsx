@@ -1,98 +1,74 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from './AuthContext';
 import { useToast } from '@/hooks/use-toast';
 
 type Clinic = {
   id: string;
   name: string;
+  license_number: string | null;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  created_at?: string;
+  updated_at?: string;
 };
 
-interface ClinicContextType {
-  clinics: Clinic[];
+type ClinicContextType = {
   selectedClinic: Clinic | null;
   setSelectedClinic: (clinic: Clinic | null) => void;
+  clinics: Clinic[];
   loading: boolean;
-}
+};
 
-const ClinicContext = createContext<ClinicContextType>({
-  clinics: [],
-  selectedClinic: null,
-  setSelectedClinic: () => {},
-  loading: true,
-});
+const ClinicContext = createContext<ClinicContextType | undefined>(undefined);
 
-export const ClinicProvider = ({ children }: { children: React.ReactNode }) => {
-  const { user, isAdmin, loading: authLoading } = useAuth();
+export function ClinicProvider({ children }: { children: ReactNode }) {
   const { toast } = useToast();
+  const [selectedClinic, setSelectedClinic] = useState<Clinic | null>(null);
   const [clinics, setClinics] = useState<Clinic[]>([]);
-  const [selectedClinic, setSelectedClinicState] = useState<Clinic | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Wait for authentication to finish before doing anything
-    if (authLoading) {
-      return;
-    }
+    fetchClinics();
+  }, []);
 
-    const fetchClinicsForUser = async () => {
-      setLoading(true);
-      try {
-        if (isAdmin) {
-          // SUPER ADMIN: Fetch all clinics and default to "All Clinics" view
-          const { data, error } = await supabase.from('clinics').select('*').order('name');
-          if (error) throw error;
-          
-          setClinics(data || []);
-          // KEY FIX: We now check local storage ONLY if you want to restore a filter.
-          // By default, it will be null for a fresh login.
-          const storedClinicId = localStorage.getItem('selectedClinicId');
-          if (storedClinicId) {
-            const foundClinic = data?.find(c => c.id === storedClinicId);
-            setSelectedClinicState(foundClinic || null);
-          } else {
-            setSelectedClinicState(null); // Default to All Clinics
-          }
-        
-        } else if (user?.clinic_id) {
-          // SUB ADMIN: Fetch only their assigned clinic
-          const { data, error } = await supabase.from('clinics').select('*').eq('id', user.clinic_id).single();
-          if (error) throw error;
-          
-          if (data) {
-            setClinics([data]);
-            setSelectedClinicState(data); // Auto-select their clinic
-          }
-        } else {
-          setClinics([]);
-          setSelectedClinicState(null);
-        }
-      } catch (error: any) {
-        toast({ title: "Error Loading Clinic Data", description: error.message, variant: "destructive" });
-      } finally {
-        setLoading(false);
+  const fetchClinics = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('clinics')
+        .select('*')
+        .order('name');
+
+      if (error) throw error;
+      
+      setClinics((data as any) || []);
+      
+      // Auto-select first clinic if none selected
+      if (data && data.length > 0 && !selectedClinic) {
+        setSelectedClinic(data[0] as any);
       }
-    };
-
-    fetchClinicsForUser();
-  }, [user, isAdmin, authLoading, toast]);
-
-  const setSelectedClinic = (clinic: Clinic | null) => {
-    if (isAdmin) { // Only Super Admins can change clinics
-      setSelectedClinicState(clinic);
-      if (clinic) {
-        localStorage.setItem('selectedClinicId', clinic.id);
-      } else {
-        localStorage.removeItem('selectedClinicId');
-      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch clinics",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const value = { clinics, selectedClinic, setSelectedClinic, loading };
+  return (
+    <ClinicContext.Provider value={{ selectedClinic, setSelectedClinic, clinics, loading }}>
+      {children}
+    </ClinicContext.Provider>
+  );
+}
 
-  return <ClinicContext.Provider value={value}>{children}</ClinicContext.Provider>;
-};
-
-export const useClinic = () => {
-  return useContext(ClinicContext);
-};
+export function useClinic() {
+  const context = useContext(ClinicContext);
+  if (context === undefined) {
+    throw new Error('useClinic must be used within a ClinicProvider');
+  }
+  return context;
+}
