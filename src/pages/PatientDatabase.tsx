@@ -12,6 +12,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useClinic } from "@/contexts/ClinicContext";
+import { cn } from "@/lib/utils"; // <--- This was the missing import
 
 type Patient = {
   id: string;
