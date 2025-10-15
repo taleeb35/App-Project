@@ -39,6 +39,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const fetchUserProfile = async (session: Session | null) => {
+      setLoading(true);
       if (session?.user) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
@@ -49,6 +50,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (profileError) {
           console.error("AuthContext Error: Failed to fetch user profile.", profileError);
           setUser(session.user); // Fallback to basic user
+          toast({ title: "Error", description: "Could not load user profile.", variant: "destructive" });
         } else {
           setUser({ ...session.user, ...profile });
         }
@@ -58,7 +60,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     };
     
-    // Fetch initial session
+    // Fetch initial session and then profile
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       fetchUserProfile(session);
@@ -66,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
         setSession(session);
         fetchUserProfile(session);
       }
@@ -75,23 +77,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       authListener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [toast]);
   
   const signIn = async (email, password) => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
-      toast({
-        title: 'Sign In Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Sign In Failed', description: error.message, variant: 'destructive' });
       setLoading(false);
     } else {
-      toast({
-        title: 'Signed In',
-        description: 'Welcome back!',
-      });
+      toast({ title: 'Signed In', description: 'Welcome back!' });
     }
     return { error };
   };
@@ -100,37 +95,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
-    toast({
-      title: 'Signed Out',
-      description: 'You have been successfully signed out.',
-    });
   };
   
   const resetPassword = async (email) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/`,
-    });
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: `${window.location.origin}/` });
     if (error) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
     return { error };
   };
 
   const isAdmin = user?.app_role === 'admin';
 
-  const value = {
-    user,
-    session,
-    loading,
-    isAdmin,
-    signIn,
-    signOut,
-    resetPassword,
-  };
+  const value = { user, session, loading, isAdmin, signIn, signOut, resetPassword };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
