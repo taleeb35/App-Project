@@ -38,7 +38,6 @@ export default function Auth() {
     setIsLoading(false);
   };
 
-
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -51,7 +50,7 @@ export default function Auth() {
     const { error } = await signUp(email, password, fullName);
 
     if (!error) {
-      // After signup, switch to login so the user can sign in
+      toast({ title: 'Account created', description: 'Please sign in now.' });
       setMode('login');
     }
 
@@ -69,8 +68,8 @@ export default function Auth() {
     
     if (!error) {
       toast({
-        title: "Password reset email sent",
-        description: "Check your email for the password reset link",
+        title: 'Password reset email sent',
+        description: 'Check your email for the password reset link',
       });
       setMode('login');
     }
@@ -91,66 +90,68 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {!showForgotPassword ? (
+          {mode === 'login' ? (
             <>
               <form onSubmit={handleSignIn} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    placeholder="admin@example.com"
-                    required
-                  />
+                  <Input id="email" name="email" type="email" placeholder="admin@example.com" required />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="password">Password</Label>
-                  <Input
-                    id="password"
-                    name="password"
-                    type="password"
-                    placeholder="••••••••"
-                    required
-                  />
+                  <Input id="password" name="password" type="password" placeholder="••••••••" required />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
-              <div className="mt-4 text-center">
-                <Button 
-                  variant="link" 
-                  onClick={() => setShowForgotPassword(true)}
-                  className="text-sm"
-                >
+              <div className="mt-4 flex items-center justify-between">
+                <Button variant="link" onClick={() => setMode('forgot')} className="text-sm">
                   Forgot your password?
+                </Button>
+                <Button variant="link" onClick={() => setMode('signup')} className="text-sm">
+                  Create an account
                 </Button>
               </div>
             </>
-          ) : (
+          ) : mode === 'forgot' ? (
             <>
               <form onSubmit={handleForgotPassword} className="space-y-4 mt-4">
                 <div className="space-y-2">
                   <Label htmlFor="reset-email">Email</Label>
-                  <Input
-                    id="reset-email"
-                    name="reset-email"
-                    type="email"
-                    placeholder="admin@example.com"
-                    required
-                  />
+                  <Input id="reset-email" name="reset-email" type="email" placeholder="admin@example.com" required />
                 </div>
                 <Button type="submit" className="w-full" disabled={isLoading}>
                   {isLoading ? 'Sending reset link...' : 'Send Reset Link'}
                 </Button>
               </form>
               <div className="mt-4 text-center">
-                <Button 
-                  variant="link" 
-                  onClick={() => setShowForgotPassword(false)}
-                  className="text-sm"
-                >
+                <Button variant="link" onClick={() => setMode('login')} className="text-sm">
+                  Back to login
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
+              <form onSubmit={handleSignUp} className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="full_name">Full Name</Label>
+                  <Input id="full_name" name="full_name" type="text" placeholder="CEO Admin" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email</Label>
+                  <Input id="email" name="email" type="email" placeholder="ceo@weblerzdemo.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" name="password" type="password" placeholder="shineE065" required />
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>
+                  {isLoading ? 'Creating account...' : 'Create Account'}
+                </Button>
+              </form>
+              <div className="mt-4 text-center">
+                <Button variant="link" onClick={() => setMode('login')} className="text-sm">
                   Back to login
                 </Button>
               </div>
