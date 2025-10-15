@@ -10,10 +10,10 @@ import { useToast } from '@/hooks/use-toast';
 
 export default function Auth() {
   const navigate = useNavigate();
-  const { signIn, resetPassword, user } = useAuth();
+  const { signIn, signUp, resetPassword, user } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [mode, setMode] = useState<'login' | 'forgot' | 'signup'>('login');
 
   // Redirect if already logged in
   if (user) {
@@ -39,6 +39,25 @@ export default function Auth() {
   };
 
 
+  const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    const formData = new FormData(e.currentTarget);
+    const fullName = formData.get('full_name') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+
+    const { error } = await signUp(email, password, fullName);
+
+    if (!error) {
+      // After signup, switch to login so the user can sign in
+      setMode('login');
+    }
+
+    setIsLoading(false);
+  };
+
   const handleForgotPassword = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -53,7 +72,7 @@ export default function Auth() {
         title: "Password reset email sent",
         description: "Check your email for the password reset link",
       });
-      setShowForgotPassword(false);
+      setMode('login');
     }
     
     setIsLoading(false);
