@@ -1,13 +1,14 @@
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { Badge } from "@/components/ui/badge";
-import { Bell, Settings, LogOut } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { NavLink, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { CircleUser, LogOut } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import ClinicSelector from '../ClinicSelector';
+import { useClinic } from '@/contexts/ClinicContext';
 
-export function TopHeader() {
-  const notifications = 3;
-  const { user, signOut } = useAuth();
+export default function TopHeader() {
+  const { user, signOut, isAdmin } = useAuth();
+  const { selectedClinic } = useClinic();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -16,43 +17,38 @@ export function TopHeader() {
   };
 
   return (
-    <header className="h-16 border-b bg-card flex items-center justify-between px-6">
-      <div className="flex items-center gap-4">
-        <SidebarTrigger className="lg:hidden" />
-        
-        <div className="flex items-center gap-3">
-          <h1 className="text-xl font-semibold text-foreground">Patient Management System</h1>
-          <Badge variant="secondary" className="bg-primary/10 text-primary">Admin</Badge>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-4">
-        {/* Header Actions */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="relative">
-            <Bell className="h-4 w-4" />
-            {notifications > 0 && (
-              <Badge 
-                variant="destructive" 
-                className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs"
-              >
-                {notifications}
-              </Badge>
-            )}
-          </Button>
-          
-          <Button variant="ghost" size="sm">
-            <Settings className="h-4 w-4" />
-          </Button>
-          
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={handleSignOut} title="Sign Out">
-              <LogOut className="h-4 w-4" />
-            </Button>
+    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+      {/* Mobile Navigation is handled in AppSidebar */}
+      <div className="w-full flex-1">
+        {isAdmin ? (
+          <ClinicSelector />
+        ) : (
+          <div className="font-medium text-lg">
+            {selectedClinic ? selectedClinic.name : 'Your Clinic'}
           </div>
-        </div>
+        )}
       </div>
+      
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="secondary" size="icon" className="rounded-full">
+            <CircleUser className="h-5 w-5" />
+            <span className="sr-only">Toggle user menu</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuLabel>
+            {user ? `${user.first_name || 'My'} ${user.last_name || 'Account'}` : 'My Account'}
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => navigate('/settings')}>Settings</DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleSignOut} className="text-red-500">
+            <LogOut className="mr-2 h-4 w-4" />
+            Logout
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     </header>
   );
 }
