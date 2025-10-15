@@ -38,17 +38,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    const updateUserProfile = async (session: Session | null) => {
+    const fetchUserProfile = async (session: Session | null) => {
       if (session?.user) {
         const { data: profile, error: profileError } = await supabase
           .from('users')
           .select('app_role, clinic_id, first_name, last_name')
           .eq('id', session.user.id)
           .single();
-
+        
         if (profileError) {
-          console.error("Error fetching user profile:", profileError);
-          setUser(session.user); // Fallback to basic user object
+          console.error("AuthContext Error: Failed to fetch user profile.", profileError);
+          setUser(session.user); // Fallback to basic user
         } else {
           setUser({ ...session.user, ...profile });
         }
@@ -58,15 +58,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setLoading(false);
     };
     
-    const { data: { session: initialSession } } = supabase.auth.getSession().then(({data}) => {
-        setSession(data.session);
-        updateUserProfile(data.session);
+    // Fetch initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      fetchUserProfile(session);
     });
 
+    // Listen for auth state changes
     const { data: authListener } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         setSession(session);
-        updateUserProfile(session);
+        fetchUserProfile(session);
       }
     );
 
@@ -76,6 +78,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
   
   const signIn = async (email, password) => {
+    setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) {
       toast({
@@ -83,6 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: error.message,
         variant: 'destructive',
       });
+      setLoading(false);
     } else {
       toast({
         title: 'Signed In',
