@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 type Clinic = {
   id: string;
@@ -71,6 +72,11 @@ export default function SuperAdminDashboard() {
   const [patientTypeFilter, setPatientTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [patientsPage, setPatientsPage] = useState(1);
+  const [clinicsPage, setClinicsPage] = useState(1);
+  const [employeesPage, setEmployeesPage] = useState(1);
+  const [vendorsPage, setVendorsPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     fetchAllData();
@@ -394,7 +400,7 @@ export default function SuperAdminDashboard() {
                       <TableCell colSpan={7} className="text-center py-8">No patients found</TableCell>
                     </TableRow>
                   ) : (
-                    filteredPatients.slice(0, 50).map((patient) => (
+                    filteredPatients.slice((patientsPage - 1) * itemsPerPage, patientsPage * itemsPerPage).map((patient) => (
                       <TableRow key={patient.id}>
                         <TableCell className="font-medium">{patient.first_name} {patient.last_name}</TableCell>
                         <TableCell>{patient.k_number}</TableCell>
@@ -420,10 +426,34 @@ export default function SuperAdminDashboard() {
                   )}
                 </TableBody>
               </Table>
-              {filteredPatients.length > 50 && (
-                <p className="text-sm text-muted-foreground text-center mt-4">
-                  Showing first 50 of {filteredPatients.length} patients
-                </p>
+              {Math.ceil(filteredPatients.length / itemsPerPage) > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => setPatientsPage(Math.max(1, patientsPage - 1))}
+                        className={patientsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    {Array.from({ length: Math.ceil(filteredPatients.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          onClick={() => setPatientsPage(page)}
+                          isActive={patientsPage === page}
+                          className="cursor-pointer"
+                        >
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => setPatientsPage(Math.min(Math.ceil(filteredPatients.length / itemsPerPage), patientsPage + 1))}
+                        className={patientsPage === Math.ceil(filteredPatients.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
               )}
             </CardContent>
           </Card>
@@ -447,7 +477,7 @@ export default function SuperAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {clinics.map((clinic) => (
+                  {clinics.slice((clinicsPage - 1) * itemsPerPage, clinicsPage * itemsPerPage).map((clinic) => (
                     <TableRow key={clinic.id}>
                       <TableCell className="font-medium">{clinic.name}</TableCell>
                       <TableCell>{(clinic as any).license_number || 'N/A'}</TableCell>
@@ -458,6 +488,21 @@ export default function SuperAdminDashboard() {
                   ))}
                 </TableBody>
               </Table>
+              {Math.ceil(clinics.length / itemsPerPage) > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious onClick={() => setClinicsPage(Math.max(1, clinicsPage - 1))} className={clinicsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                    </PaginationItem>
+                    {Array.from({ length: Math.ceil(clinics.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}><PaginationLink onClick={() => setClinicsPage(page)} isActive={clinicsPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext onClick={() => setClinicsPage(Math.min(Math.ceil(clinics.length / itemsPerPage), clinicsPage + 1))} className={clinicsPage === Math.ceil(clinics.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -478,7 +523,7 @@ export default function SuperAdminDashboard() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {employees.map((employee) => (
+                  {employees.slice((employeesPage - 1) * itemsPerPage, employeesPage * itemsPerPage).map((employee) => (
                     <TableRow key={employee.id}>
                       <TableCell className="font-medium">{employee.full_name}</TableCell>
                       <TableCell>{employee.email}</TableCell>
@@ -487,6 +532,17 @@ export default function SuperAdminDashboard() {
                   ))}
                 </TableBody>
               </Table>
+              {Math.ceil(employees.length / itemsPerPage) > 1 && (
+                <Pagination className="mt-4">
+                  <PaginationContent>
+                    <PaginationItem><PaginationPrevious onClick={() => setEmployeesPage(Math.max(1, employeesPage - 1))} className={employeesPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
+                    {Array.from({ length: Math.ceil(employees.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                      <PaginationItem key={page}><PaginationLink onClick={() => setEmployeesPage(page)} isActive={employeesPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
+                    ))}
+                    <PaginationItem><PaginationNext onClick={() => setEmployeesPage(Math.min(Math.ceil(employees.length / itemsPerPage), employeesPage + 1))} className={employeesPage === Math.ceil(employees.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

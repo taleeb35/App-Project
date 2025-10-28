@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { UserX, Phone, Mail, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 
 interface Profile {
   clinic_id: string;
@@ -29,6 +30,9 @@ export default function NonOrderingReport() {
   const [civilianPatients, setCivilianPatients] = useState<NonOrderingPatient[]>([]);
   const [loading, setLoading] = useState(true);
   const [clinicId, setClinicId] = useState<string | null>(null);
+  const [veteranPage, setVeteranPage] = useState(1);
+  const [civilianPage, setCivilianPage] = useState(1);
+  const itemsPerPage = 10;
   const { user } = useAuth();
 
   useEffect(() => {
@@ -132,81 +136,125 @@ export default function NonOrderingReport() {
     }
   };
 
-  const PatientTable = ({ patients }: { patients: NonOrderingPatient[] }) => (
-    <div className="rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>K-Number</TableHead>
-            <TableHead>Name</TableHead>
-            <TableHead>Email</TableHead>
-            <TableHead>Phone</TableHead>
-            <TableHead>Last Order</TableHead>
-            <TableHead>Months Inactive</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {patients.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                No patients found in this category
-              </TableCell>
-            </TableRow>
-          ) : (
-            patients.map((patient) => (
-              <TableRow key={patient.id}>
-                <TableCell className="font-mono text-sm">{patient.k_number}</TableCell>
-                <TableCell className="font-medium">
-                  {patient.first_name} {patient.last_name}
-                </TableCell>
-                <TableCell>
-                  {patient.email ? (
-                    <a 
-                      href={`mailto:${patient.email}`} 
-                      className="flex items-center gap-2 text-primary hover:underline"
-                    >
-                      <Mail className="h-4 w-4" />
-                      {patient.email}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">N/A</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {patient.phone ? (
-                    <a 
-                      href={`tel:${patient.phone}`} 
-                      className="flex items-center gap-2 text-primary hover:underline"
-                    >
-                      <Phone className="h-4 w-4" />
-                      {patient.phone}
-                    </a>
-                  ) : (
-                    <span className="text-muted-foreground">N/A</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {patient.last_purchase_date ? (
-                    <span className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      {new Date(patient.last_purchase_date).toLocaleDateString()}
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Never</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className="border-warning text-warning">
-                    {patient.months_without_order} months
-                  </Badge>
-                </TableCell>
+  const PatientTable = ({ patients, currentPage, onPageChange }: { 
+    patients: NonOrderingPatient[]; 
+    currentPage: number; 
+    onPageChange: (page: number) => void;
+  }) => {
+    const totalPages = Math.ceil(patients.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedPatients = patients.slice(startIndex, startIndex + itemsPerPage);
+
+    return (
+      <div className="space-y-4">
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>K-Number</TableHead>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Last Order</TableHead>
+                <TableHead>Months Inactive</TableHead>
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
+            </TableHeader>
+            <TableBody>
+              {paginatedPatients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No patients found in this category
+                  </TableCell>
+                </TableRow>
+              ) : (
+                paginatedPatients.map((patient) => (
+                  <TableRow key={patient.id}>
+                    <TableCell className="font-mono text-sm">{patient.k_number}</TableCell>
+                    <TableCell className="font-medium">
+                      {patient.first_name} {patient.last_name}
+                    </TableCell>
+                    <TableCell>
+                      {patient.email ? (
+                        <a 
+                          href={`mailto:${patient.email}`} 
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <Mail className="h-4 w-4" />
+                          {patient.email}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {patient.phone ? (
+                        <a 
+                          href={`tel:${patient.phone}`} 
+                          className="flex items-center gap-2 text-primary hover:underline"
+                        >
+                          <Phone className="h-4 w-4" />
+                          {patient.phone}
+                        </a>
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {patient.last_purchase_date ? (
+                        <span className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          {new Date(patient.last_purchase_date).toLocaleDateString()}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Never</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="border-warning text-warning">
+                        {patient.months_without_order} months
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+        
+        {totalPages > 1 && (
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious 
+                  onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <PaginationItem key={page}>
+                  <PaginationLink
+                    onClick={() => onPageChange(page)}
+                    isActive={currentPage === page}
+                    className="cursor-pointer"
+                  >
+                    {page}
+                  </PaginationLink>
+                </PaginationItem>
+              ))}
+              
+              <PaginationItem>
+                <PaginationNext 
+                  onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -273,7 +321,11 @@ export default function NonOrderingReport() {
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
               ) : (
-                <PatientTable patients={veteranPatients} />
+                <PatientTable 
+                  patients={veteranPatients} 
+                  currentPage={veteranPage}
+                  onPageChange={setVeteranPage}
+                />
               )}
             </CardContent>
           </Card>
@@ -291,7 +343,11 @@ export default function NonOrderingReport() {
               {loading ? (
                 <div className="text-center py-8 text-muted-foreground">Loading...</div>
               ) : (
-                <PatientTable patients={civilianPatients} />
+                <PatientTable 
+                  patients={civilianPatients} 
+                  currentPage={civilianPage}
+                  onPageChange={setCivilianPage}
+                />
               )}
             </CardContent>
           </Card>
