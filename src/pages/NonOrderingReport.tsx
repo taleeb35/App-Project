@@ -8,6 +8,7 @@ import { UserX, Phone, Mail, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface Profile {
   clinic_id: string;
@@ -32,7 +33,7 @@ export default function NonOrderingReport() {
   const [clinicId, setClinicId] = useState<string | null>(null);
   const [veteranPage, setVeteranPage] = useState(1);
   const [civilianPage, setCivilianPage] = useState(1);
-  const itemsPerPage = 10;
+  const [pageSize, setPageSize] = useState(25);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -75,15 +76,15 @@ export default function NonOrderingReport() {
 
       if (patientsError) throw patientsError;
 
-      // Get all purchases for these patients
+      // Get all vendor reports (purchases) for these patients
       const patientIds = patients?.map(p => p.id) || [];
-      const { data: purchases, error: purchasesError } = await supabase
-        .from("patient_purchases")
-        .select("patient_id, purchase_date")
+      const { data: vendorReports, error: reportsError } = await supabase
+        .from("vendor_reports")
+        .select("patient_id, report_month")
         .in("patient_id", patientIds)
-        .order("purchase_date", { ascending: false });
+        .order("report_month", { ascending: false });
 
-      if (purchasesError) throw purchasesError;
+      if (reportsError) throw reportsError;
 
       // Calculate months without orders for each patient
       const today = new Date();
@@ -94,24 +95,28 @@ export default function NonOrderingReport() {
       const civiliansWithoutOrders: NonOrderingPatient[] = [];
 
       patients?.forEach(patient => {
-        const patientPurchases = purchases?.filter(p => p.patient_id === patient.id) || [];
+        const patientReports = vendorReports?.filter(p => p.patient_id === patient.id) || [];
         
-        // Get the most recent purchase date
-        const lastPurchase = patientPurchases[0]?.purchase_date || null;
-        const lastPurchaseDate = lastPurchase ? new Date(lastPurchase) : null;
+        // Get the most recent purchase/report date
+        const lastReport = patientReports[0]?.report_month || null;
+        const lastReportDate = lastReport ? new Date(lastReport) : null;
 
         let monthsWithoutOrder = 0;
-        if (!lastPurchaseDate) {
+        if (!lastReportDate) {
           monthsWithoutOrder = 12; // No purchases ever
         } else {
-          const monthsDiff = (today.getFullYear() - lastPurchaseDate.getFullYear()) * 12 + 
-                           (today.getMonth() - lastPurchaseDate.getMonth());
-          monthsWithoutOrder = monthsDiff;
+          // Calculate complete months between last purchase and today
+          const yearsDiff = today.getFullYear() - lastReportDate.getFullYear();
+          const monthsDiff = today.getMonth() - lastReportDate.getMonth();
+          monthsWithoutOrder = yearsDiff * 12 + monthsDiff;
+          
+          // If the purchase was this month, months without order should be 0
+          if (monthsWithoutOrder < 0) monthsWithoutOrder = 0;
         }
 
         const nonOrderingPatient: NonOrderingPatient = {
           ...patient,
-          last_purchase_date: lastPurchase,
+          last_purchase_date: lastReport,
           months_without_order: monthsWithoutOrder
         };
 
@@ -141,9 +146,53 @@ export default function NonOrderingReport() {
     currentPage: number; 
     onPageChange: (page: number) => void;
   }) => {
-    const totalPages = Math.ceil(patients.length / itemsPerPage);
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedPatients = patients.slice(startIndex, startIndex + itemsPerPage);
+    const totalPages = Math.ceil(patients.length / pageSize);
+    const startIndex = (currentPage - 1) * pageSize;
+    const endIndex = startIndex + pageSize;
+    const paginatedPatients = patients.slice(startIndex, endIndex);
+    
+    // Smart pagination: show first, last, current, and nearby pages
+    const getPageNumbers = () => {
+      const pages: (number | string)[] = [];
+      const maxVisible = 7;
+      
+      if (totalPages <= maxVisible) {
+        // Show all pages if total is small
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+      }
+      
+      // Always show first page
+      pages.push(1);
+      
+      // Calculate range around current page
+      let start = Math.max(2, currentPage - 1);
+      let end = Math.min(totalPages - 1, currentPage + 1);
+      
+      // Add ellipsis after first page if needed
+      if (start > 2) {
+        pages.push('ellipsis-start');
+        start = Math.max(start, currentPage - 1);
+      }
+      
+      // Add pages around current
+      for (let i = start; i <= end; i++) {
+        pages.push(i);
+      }
+      
+      // Add ellipsis before last page if needed
+      if (end < totalPages - 1) {
+        pages.push('ellipsis-end');
+      }
+      
+      // Always show last page
+      if (totalPages > 1) {
+        pages.push(totalPages);
+      }
+      
+      return pages;
+    };
+    
+    const pageNumbers = getPageNumbers();
 
     return (
       <div className="space-y-4">
@@ -221,37 +270,68 @@ export default function NonOrderingReport() {
           </Table>
         </div>
         
-        {totalPages > 1 && (
-          <Pagination>
-            <PaginationContent>
-              <PaginationItem>
-                <PaginationPrevious 
-                  onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-                  className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-              
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
-                <PaginationItem key={page}>
-                  <PaginationLink
-                    onClick={() => onPageChange(page)}
-                    isActive={currentPage === page}
-                    className="cursor-pointer"
-                  >
-                    {page}
-                  </PaginationLink>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">
+              Showing {startIndex + 1}-{Math.min(endIndex, patients.length)} of {patients.length}
+            </span>
+            <Select value={pageSize.toString()} onValueChange={(value) => {
+              setPageSize(Number(value));
+              onPageChange(1); // Reset to first page when changing page size
+            }}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="25">25 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
+                <SelectItem value="75">75 / page</SelectItem>
+                <SelectItem value="100">100 / page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          
+          {totalPages > 1 && (
+            <Pagination>
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
                 </PaginationItem>
-              ))}
-              
-              <PaginationItem>
-                <PaginationNext 
-                  onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-                  className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        )}
+                
+                {pageNumbers.map((page, index) => {
+                  if (typeof page === 'string') {
+                    return (
+                      <PaginationItem key={`${page}-${index}`}>
+                        <PaginationEllipsis />
+                      </PaginationItem>
+                    );
+                  }
+                  return (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        onClick={() => onPageChange(page)}
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
       </div>
     );
   };
