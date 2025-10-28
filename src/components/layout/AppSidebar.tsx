@@ -24,6 +24,7 @@ import {
   Download,
   Crown,
   UserX,
+  TrendingUp,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -39,7 +40,13 @@ const regularNavigationItems = [
     items: [
       { title: "Patient Database", url: "/patients", icon: DatabaseIcon },
       { title: "Upload Patient Data", url: "/upload/clinic", icon: Upload },
+    ],
+  },
+  {
+    title: "Reports",
+    items: [
       { title: "Non-Ordering Report", url: "/reports/non-ordering", icon: UserX },
+      { title: "Business Trending Report", url: "/reports/business-trending", icon: TrendingUp },
     ],
   },
   {
