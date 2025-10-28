@@ -7,6 +7,8 @@ import { Plus, Store, FileText, Users, DollarSign, Edit, Trash2 } from "lucide-r
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -30,6 +32,8 @@ export default function Vendors() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [formData, setFormData] = useState({
     name: "",
     license_number: "",
@@ -436,75 +440,163 @@ export default function Vendors() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Vendor Name</TableHead>
-                  <TableHead>License #</TableHead>
-                  <TableHead>Contact Person</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {vendors.length === 0 ? (
+            <div className="space-y-4">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
-                      No vendors found
-                    </TableCell>
+                    <TableHead>Vendor Name</TableHead>
+                    <TableHead>License #</TableHead>
+                    <TableHead>Contact Person</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Email</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ) : (
-                  vendors.map((vendor) => (
-                    <TableRow key={vendor.id}>
-                      <TableCell>
-                        <p className="font-medium text-foreground">{vendor.name}</p>
-                      </TableCell>
-                      <TableCell>
-                        <code className="text-sm bg-muted px-2 py-1 rounded">{vendor.license_number || 'N/A'}</code>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{vendor.contact_person || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{vendor.phone || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm">{vendor.email || 'N/A'}</p>
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={vendor.status === 'active' ? 'default' : 'secondary'}
-                          className={vendor.status === 'active' ? 'bg-success text-success-foreground' : ''}
-                        >
-                          {vendor.status || 'unknown'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleEditVendor(vendor)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleDeleteVendor(vendor.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {vendors.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        No vendors found
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  ) : (
+                    vendors.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((vendor) => (
+                      <TableRow key={vendor.id}>
+                        <TableCell>
+                          <p className="font-medium text-foreground">{vendor.name}</p>
+                        </TableCell>
+                        <TableCell>
+                          <code className="text-sm bg-muted px-2 py-1 rounded">{vendor.license_number || 'N/A'}</code>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{vendor.contact_person || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{vendor.phone || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{vendor.email || 'N/A'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={vendor.status === 'active' ? 'default' : 'secondary'}
+                            className={vendor.status === 'active' ? 'bg-success text-success-foreground' : ''}
+                          >
+                            {vendor.status || 'unknown'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditVendor(vendor)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleDeleteVendor(vendor.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+              
+              {vendors.length > 0 && (() => {
+                const totalPages = Math.ceil(vendors.length / pageSize);
+                const startIndex = (currentPage - 1) * pageSize;
+                const endIndex = Math.min(startIndex + pageSize, vendors.length);
+                
+                const getPageNumbers = () => {
+                  const pages: (number | string)[] = [];
+                  if (totalPages <= 7) {
+                    return Array.from({ length: totalPages }, (_, i) => i + 1);
+                  }
+                  pages.push(1);
+                  let start = Math.max(2, currentPage - 1);
+                  let end = Math.min(totalPages - 1, currentPage + 1);
+                  if (start > 2) pages.push('ellipsis-start');
+                  for (let i = start; i <= end; i++) pages.push(i);
+                  if (end < totalPages - 1) pages.push('ellipsis-end');
+                  if (totalPages > 1) pages.push(totalPages);
+                  return pages;
+                };
+                
+                return (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">
+                        Showing {startIndex + 1}-{endIndex} of {vendors.length}
+                      </span>
+                      <Select value={pageSize.toString()} onValueChange={(value) => {
+                        setPageSize(Number(value));
+                        setCurrentPage(1);
+                      }}>
+                        <SelectTrigger className="w-[100px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="25">25 / page</SelectItem>
+                          <SelectItem value="50">50 / page</SelectItem>
+                          <SelectItem value="75">75 / page</SelectItem>
+                          <SelectItem value="100">100 / page</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    {totalPages > 1 && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          
+                          {getPageNumbers().map((page, index) => {
+                            if (typeof page === 'string') {
+                              return (
+                                <PaginationItem key={`${page}-${index}`}>
+                                  <PaginationEllipsis />
+                                </PaginationItem>
+                              );
+                            }
+                            return (
+                              <PaginationItem key={page}>
+                                <PaginationLink
+                                  onClick={() => setCurrentPage(page)}
+                                  isActive={currentPage === page}
+                                  className="cursor-pointer"
+                                >
+                                  {page}
+                                </PaginationLink>
+                              </PaginationItem>
+                            );
+                          })}
+                          
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
           )}
         </CardContent>
       </Card>
