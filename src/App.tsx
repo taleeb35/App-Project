@@ -24,6 +24,7 @@ import DummyData from "./pages/DummyData";
 import VendorReportUpload from "./pages/VendorReportUpload";
 import VendorReportView from "./pages/VendorReportView";
 import VendorReports from "./pages/VendorReports";
+import NonOrderingReport from "./pages/NonOrderingReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -41,6 +42,7 @@ const App = () => (
             <Route path="/super-admin" element={<ProtectedRoute><AdminLayout><SuperAdminDashboard /></AdminLayout></ProtectedRoute>} />
             <Route path="/dashboard" element={<ProtectedRoute><AdminLayout><Dashboard /></AdminLayout></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
+            <Route path="/reports/non-ordering" element={<ProtectedRoute><AdminLayout><NonOrderingReport /></AdminLayout></ProtectedRoute>} />
             <Route path="/patients/search" element={<ProtectedRoute><AdminLayout><PatientSearch /></AdminLayout></ProtectedRoute>} />
             <Route path="/patients" element={<ProtectedRoute><AdminLayout><PatientDatabase /></AdminLayout></ProtectedRoute>} />
             <Route path="/upload/clinic" element={<ProtectedRoute><AdminLayout><UploadClinic /></AdminLayout></ProtectedRoute>} />
