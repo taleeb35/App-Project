@@ -25,6 +25,7 @@ import {
   Crown,
   UserX,
   TrendingUp,
+  FileText,
 } from "lucide-react";
 import { useUserRole } from "@/hooks/useUserRole";
 
@@ -47,6 +48,7 @@ const regularNavigationItems = [
     items: [
       { title: "Non-Ordering Report", url: "/reports/non-ordering", icon: UserX },
       { title: "Business Trending Report", url: "/reports/business-trending", icon: TrendingUp },
+      { title: "Vendor Reconciliation Report", url: "/reports/vendor-reconciliation", icon: FileText },
     ],
   },
   {

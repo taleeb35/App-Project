@@ -26,6 +26,7 @@ import VendorReportView from "./pages/VendorReportView";
 import VendorReports from "./pages/VendorReports";
 import NonOrderingReport from "./pages/NonOrderingReport";
 import BusinessTrendingReport from "./pages/BusinessTrendingReport";
+import VendorReconciliationReport from "./pages/VendorReconciliationReport";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
             <Route path="/reports" element={<ProtectedRoute><AdminLayout><Reports /></AdminLayout></ProtectedRoute>} />
             <Route path="/reports/non-ordering" element={<ProtectedRoute><AdminLayout><NonOrderingReport /></AdminLayout></ProtectedRoute>} />
             <Route path="/reports/business-trending" element={<ProtectedRoute><AdminLayout><BusinessTrendingReport /></AdminLayout></ProtectedRoute>} />
+            <Route path="/reports/vendor-reconciliation" element={<ProtectedRoute><AdminLayout><VendorReconciliationReport /></AdminLayout></ProtectedRoute>} />
             <Route path="/patients/search" element={<ProtectedRoute><AdminLayout><PatientSearch /></AdminLayout></ProtectedRoute>} />
             <Route path="/patients" element={<ProtectedRoute><AdminLayout><PatientDatabase /></AdminLayout></ProtectedRoute>} />
             <Route path="/upload/clinic" element={<ProtectedRoute><AdminLayout><UploadClinic /></AdminLayout></ProtectedRoute>} />
