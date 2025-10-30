@@ -12,6 +12,7 @@ import { useClinic } from '@/contexts/ClinicContext';
 type PharmacyReport = {
   id: string;
   pharmacy_id: string;
+  vendor_id: string;
   patient_id: string;
   report_month: string;
   product_name: string;
@@ -19,6 +20,7 @@ type PharmacyReport = {
   amount: number;
   created_at: string;
   pharmacies: { name: string };
+  vendors: { name: string };
   patients: { first_name: string; last_name: string; k_number: string };
 };
 
@@ -79,6 +81,7 @@ export default function PharmacyReportView() {
         .select(`
           *,
           pharmacies (name),
+          vendors (name),
           patients (first_name, last_name, k_number)
         `)
         .eq('clinic_id', selectedClinic.id)
@@ -116,6 +119,13 @@ export default function PharmacyReportView() {
     if (selectedMonth) {
       filtered = filtered.filter((report) => 
         report.report_month.startsWith(selectedMonth)
+      );
+    }
+
+    // Filter by vendor
+    if (selectedVendor && selectedVendor !== 'all') {
+      filtered = filtered.filter((report) => 
+        report.vendor_id === selectedVendor
       );
     }
 
@@ -182,7 +192,7 @@ export default function PharmacyReportView() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="search">Search Patient</Label>
               <Input
@@ -201,6 +211,23 @@ export default function PharmacyReportView() {
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="vendor">Filter by Vendor</Label>
+              <Select value={selectedVendor} onValueChange={setSelectedVendor}>
+                <SelectTrigger id="vendor">
+                  <SelectValue placeholder="All vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Vendors</SelectItem>
+                  {vendors.map((vendor) => (
+                    <SelectItem key={vendor.id} value={vendor.id}>
+                      {vendor.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>
@@ -228,6 +255,7 @@ export default function PharmacyReportView() {
                 <TableRow>
                   <TableHead>Report Month</TableHead>
                   <TableHead>Pharmacy</TableHead>
+                  <TableHead>Vendor</TableHead>
                   <TableHead>Patient Name</TableHead>
                   <TableHead>K Number</TableHead>
                   <TableHead>Product</TableHead>
@@ -238,7 +266,7 @@ export default function PharmacyReportView() {
               <TableBody>
                 {filteredReports.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       No pharmacy reports found
                     </TableCell>
                   </TableRow>
@@ -253,6 +281,9 @@ export default function PharmacyReportView() {
                       </TableCell>
                       <TableCell>
                         <p className="font-medium">{report.pharmacies?.name || 'Unknown Pharmacy'}</p>
+                      </TableCell>
+                      <TableCell>
+                        <p className="font-medium">{report.vendors?.name || 'Unknown Vendor'}</p>
                       </TableCell>
                       <TableCell>
                         <p>{report.patients?.first_name || 'N/A'} {report.patients?.last_name || ''}</p>

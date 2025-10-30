@@ -68,8 +68,8 @@ export default function PharmacyReportUpload() {
       if (error) throw error;
       setPharmacies(data || []);
       
-      // Auto-select first pharmacy if only one exists
-      if (data && data.length === 1) {
+      // Auto-select first pharmacy (each sub admin has only 1 pharmacy)
+      if (data && data.length > 0) {
         setSelectedPharmacy(data[0].id);
       }
     } catch (error: any) {
@@ -265,23 +265,7 @@ export default function PharmacyReportUpload() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="pharmacy">Select Pharmacy</Label>
-              <Select value={selectedPharmacy} onValueChange={setSelectedPharmacy}>
-                <SelectTrigger id="pharmacy">
-                  <SelectValue placeholder="Choose pharmacy..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {pharmacies.map((pharmacy) => (
-                    <SelectItem key={pharmacy.id} value={pharmacy.id}>
-                      {pharmacy.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="vendor">Select Vendor</Label>
               <Select value={selectedVendor} onValueChange={setSelectedVendor}>
