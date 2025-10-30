@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -464,7 +465,12 @@ export default function Vendors() {
                     vendors.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((vendor) => (
                       <TableRow key={vendor.id}>
                         <TableCell>
-                          <p className="font-medium text-foreground">{vendor.name}</p>
+                          <Link 
+                            to={`/patients?vendor=${vendor.id}`}
+                            className="font-medium text-primary hover:underline cursor-pointer"
+                          >
+                            {vendor.name}
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <code className="text-sm bg-muted px-2 py-1 rounded">{vendor.license_number || 'N/A'}</code>

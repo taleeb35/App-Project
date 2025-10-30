@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ type Patient = {
   clinic_id: string;
   created_at: string;
   vendors: { name: string } | null;
+  associatedVendorIds?: string[];
   totalSpent?: number;
   lastPurchaseDate?: Date | null;
 };
@@ -52,6 +54,7 @@ type Report = {
 export default function PatientDatabase() {
   const { toast } = useToast();
   const { selectedClinic } = useClinic();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [patients, setPatients] = useState<Patient[]>([]);
   const [reports, setReports] = useState<Report[]>([]);
   const [clinics, setClinics] = useState<Clinic[]>([]);
@@ -83,7 +86,13 @@ export default function PatientDatabase() {
 
   useEffect(() => {
     fetchBaseData();
-  }, []);
+    
+    // Check for vendor query parameter
+    const vendorParam = searchParams.get('vendor');
+    if (vendorParam) {
+      setVendorFilter(vendorParam);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (selectedClinic) {
@@ -118,8 +127,23 @@ export default function PatientDatabase() {
         .eq('clinic_id', selectedClinic.id);
       
       if (reportError) throw reportError;
+
+      // Fetch patient-vendor associations
+      const { data: patientVendorData, error: pvError } = await supabase
+        .from('patient_vendors')
+        .select('patient_id, vendor_id');
       
-      setPatients((patientData as any) || []);
+      if (pvError) throw pvError;
+      
+      // Add vendor associations to patients
+      const patientsWithVendors = (patientData as any[])?.map(patient => ({
+        ...patient,
+        associatedVendorIds: patientVendorData
+          ?.filter(pv => pv.patient_id === patient.id)
+          .map(pv => pv.vendor_id) || []
+      }));
+      
+      setPatients(patientsWithVendors || []);
       setReports((reportData as any) || []);
 
     } catch (error: any) {
@@ -319,7 +343,11 @@ export default function PatientDatabase() {
       const matchesName = searchName === "" || `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchName.toLowerCase());
       const matchesKNumber = searchKNumber === "" || patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
       const matchesStatus = statusFilter === 'all_status' || patient.status === statusFilter;
-      const matchesVendor = vendorFilter === 'all_vendors' || patient.preferred_vendor_id === vendorFilter;
+      
+      // Check if patient is associated with the selected vendor through patient_vendors table
+      const matchesVendor = vendorFilter === 'all_vendors' || 
+        (patient.associatedVendorIds && patient.associatedVendorIds.includes(vendorFilter));
+      
       const matchesPatientType = patientTypeFilter === 'all_types' || patient.patient_type === patientTypeFilter;
       
       let matchesActivity = true;
