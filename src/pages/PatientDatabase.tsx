@@ -31,6 +31,7 @@ type Patient = {
   created_at: string;
   vendors: { name: string } | null;
   associatedVendorIds?: string[];
+  associatedVendors?: { id: string; name: string }[];
   totalSpent?: number;
   lastPurchaseDate?: Date | null;
 };
@@ -128,20 +129,28 @@ export default function PatientDatabase() {
       
       if (reportError) throw reportError;
 
-      // Fetch patient-vendor associations
+      // Fetch patient-vendor associations with vendor details
       const { data: patientVendorData, error: pvError } = await supabase
         .from('patient_vendors')
-        .select('patient_id, vendor_id');
+        .select('patient_id, vendor_id, vendors(id, name)');
       
       if (pvError) throw pvError;
       
       // Add vendor associations to patients
-      const patientsWithVendors = (patientData as any[])?.map(patient => ({
-        ...patient,
-        associatedVendorIds: patientVendorData
+      const patientsWithVendors = (patientData as any[])?.map(patient => {
+        const patientVendors = patientVendorData
           ?.filter(pv => pv.patient_id === patient.id)
-          .map(pv => pv.vendor_id) || []
-      }));
+          .map(pv => ({
+            id: pv.vendor_id,
+            name: (pv.vendors as any)?.name || 'Unknown'
+          })) || [];
+        
+        return {
+          ...patient,
+          associatedVendorIds: patientVendors.map(v => v.id),
+          associatedVendors: patientVendors
+        };
+      });
       
       setPatients(patientsWithVendors || []);
       setReports((reportData as any) || []);
@@ -506,7 +515,14 @@ export default function PatientDatabase() {
                           </div>
                         </TableCell>
                         <TableCell><code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code></TableCell>
-                        <TableCell><p className="text-sm">{patient.vendors?.name || 'N/A'}</p></TableCell>
+                        <TableCell>
+                          <p className="text-sm">
+                            {vendorFilter !== 'all_vendors' 
+                              ? patient.associatedVendors?.find(v => v.id === vendorFilter)?.name || 'N/A'
+                              : patient.associatedVendors?.map(v => v.name).join(', ') || 'N/A'
+                            }
+                          </p>
+                        </TableCell>
                         <TableCell>
                           <Select value={patient.status || ''} onValueChange={(newStatus) => handleStatusChange(patient.id, newStatus)}>
                               <SelectTrigger className={cn("w-28 h-9", patient.status === 'active' ? 'border-green-500 text-green-700' : 'border-red-500 text-red-700')}><SelectValue /></SelectTrigger>
