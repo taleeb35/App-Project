@@ -15,11 +15,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { useClinic } from "@/contexts/ClinicContext";
+import { useUserRole } from "@/hooks/useUserRole";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { selectedClinic } = useClinic();
+  const { isAdmin, loading: roleLoading } = useUserRole();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalPatients: 0,
@@ -32,8 +34,16 @@ export default function Dashboard() {
   });
   
   useEffect(() => {
-    fetchDashboardData();
-  }, [selectedClinic]);
+    // Redirect super admin to their dashboard
+    if (!roleLoading && isAdmin) {
+      navigate('/super-admin', { replace: true });
+      return;
+    }
+    
+    if (!roleLoading) {
+      fetchDashboardData();
+    }
+  }, [selectedClinic, isAdmin, roleLoading, navigate]);
 
   const fetchDashboardData = async () => {
     try {

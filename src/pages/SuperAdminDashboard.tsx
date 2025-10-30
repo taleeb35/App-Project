@@ -124,12 +124,21 @@ export default function SuperAdminDashboard() {
         };
       }) || [];
 
-      // Fetch all vendors
+      // Fetch all vendors (deduplicated by name to avoid duplicates)
       const { data: vendorsData, error: vendorsError } = await supabase
         .from('vendors')
         .select('*')
         .order('name');
       if (vendorsError) throw vendorsError;
+
+      // Deduplicate vendors by name (keep only first occurrence)
+      const uniqueVendorsMap = new Map();
+      vendorsData?.forEach(vendor => {
+        if (!uniqueVendorsMap.has(vendor.name)) {
+          uniqueVendorsMap.set(vendor.name, vendor);
+        }
+      });
+      const deduplicatedVendors = Array.from(uniqueVendorsMap.values());
 
       // Fetch all patients
       const { data: patientsData, error: patientsError } = await supabase
@@ -148,7 +157,7 @@ export default function SuperAdminDashboard() {
       const clinicMap = new Map((clinicsData || []).map(c => [c.id, c.name]));
 
       // Add clinic names to vendors and patients
-      const vendorsWithClinic = (vendorsData || []).map(v => ({
+      const vendorsWithClinic = deduplicatedVendors.map(v => ({
         ...v,
         clinic_name: v.clinic_id ? clinicMap.get(v.clinic_id) || 'Unknown' : 'Unassigned'
       }));
@@ -230,12 +239,6 @@ export default function SuperAdminDashboard() {
       color: "text-primary"
     },
     {
-      title: "Total Employees",
-      value: employees.length,
-      icon: Users,
-      color: "text-accent"
-    },
-    {
       title: "Total Vendors",
       value: vendors.length,
       subtitle: `${vendors.filter(v => v.status === 'active').length} active`,
@@ -271,13 +274,13 @@ export default function SuperAdminDashboard() {
       <div>
         <div className="flex items-center gap-3 mb-2">
           <TrendingUp className="h-8 w-8 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Super Admin Dashboard</h1>
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         </div>
-        <p className="text-muted-foreground">Complete overview of all clinics, employees, vendors, and patients</p>
+        <p className="text-muted-foreground">Complete overview of all clinics, vendors, and patients</p>
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {summaryStats.map((stat) => (
           <Card key={stat.title}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -295,169 +298,11 @@ export default function SuperAdminDashboard() {
       </div>
 
       {/* Tabs for different views */}
-      <Tabs defaultValue="patients" className="space-y-4">
+      <Tabs defaultValue="clinics" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="patients">Patients</TabsTrigger>
           <TabsTrigger value="clinics">Clinics</TabsTrigger>
-          <TabsTrigger value="employees">Employees</TabsTrigger>
           <TabsTrigger value="vendors">Vendors</TabsTrigger>
         </TabsList>
-
-        {/* Patients Tab */}
-        <TabsContent value="patients" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Patient Filters</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                <div>
-                  <Label>Search</Label>
-                  <Input 
-                    placeholder="Name or K#..." 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label>Clinic</Label>
-                  <Select value={clinicFilter} onValueChange={setClinicFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Clinics</SelectItem>
-                      {clinics.map(c => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Patient Type</Label>
-                  <Select value={patientTypeFilter} onValueChange={setPatientTypeFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="Veteran">Veterans</SelectItem>
-                      <SelectItem value="Civilian">Civilians</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Status</Label>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-end">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setClinicFilter("all");
-                      setPatientTypeFilter("all");
-                      setStatusFilter("all");
-                      setSearchTerm("");
-                    }}
-                  >
-                    Clear Filters
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>All Patients ({filteredPatients.length})</CardTitle>
-              <CardDescription>Veterans: {filteredPatients.filter(p => p.patient_type === 'Veteran').length} | Civilians: {filteredPatients.filter(p => p.patient_type !== 'Veteran').length}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>K Number</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Clinic</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Total Spent</TableHead>
-                    <TableHead>Last Purchase</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPatients.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8">No patients found</TableCell>
-                    </TableRow>
-                  ) : (
-                    filteredPatients.slice((patientsPage - 1) * itemsPerPage, patientsPage * itemsPerPage).map((patient) => (
-                      <TableRow key={patient.id}>
-                        <TableCell className="font-medium">{patient.first_name} {patient.last_name}</TableCell>
-                        <TableCell>{patient.k_number}</TableCell>
-                        <TableCell>
-                          <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'secondary'}>
-                            {patient.patient_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{patient.clinic_name}</TableCell>
-                        <TableCell>
-                          <Badge variant={patient.status === 'active' ? 'default' : 'secondary'}>
-                            {patient.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>${patient.totalSpent?.toFixed(2) || '0.00'}</TableCell>
-                        <TableCell>
-                          {patient.lastPurchaseDate 
-                            ? patient.lastPurchaseDate.toLocaleDateString()
-                            : 'Never'}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-              {Math.ceil(filteredPatients.length / itemsPerPage) > 1 && (
-                <Pagination className="mt-4">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        onClick={() => setPatientsPage(Math.max(1, patientsPage - 1))}
-                        className={patientsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
-                    {Array.from({ length: Math.ceil(filteredPatients.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}>
-                        <PaginationLink
-                          onClick={() => setPatientsPage(page)}
-                          isActive={patientsPage === page}
-                          className="cursor-pointer"
-                        >
-                          {page}
-                        </PaginationLink>
-                      </PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext 
-                        onClick={() => setPatientsPage(Math.min(Math.ceil(filteredPatients.length / itemsPerPage), patientsPage + 1))}
-                        className={patientsPage === Math.ceil(filteredPatients.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* Clinics Tab */}
         <TabsContent value="clinics">
@@ -500,46 +345,6 @@ export default function SuperAdminDashboard() {
                     <PaginationItem>
                       <PaginationNext onClick={() => setClinicsPage(Math.min(Math.ceil(clinics.length / itemsPerPage), clinicsPage + 1))} className={clinicsPage === Math.ceil(clinics.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} />
                     </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Employees Tab */}
-        <TabsContent value="employees">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Employees ({employees.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Assigned Clinic</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {employees.slice((employeesPage - 1) * itemsPerPage, employeesPage * itemsPerPage).map((employee) => (
-                    <TableRow key={employee.id}>
-                      <TableCell className="font-medium">{employee.full_name}</TableCell>
-                      <TableCell>{employee.email}</TableCell>
-                      <TableCell>{employee.clinic_name}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {Math.ceil(employees.length / itemsPerPage) > 1 && (
-                <Pagination className="mt-4">
-                  <PaginationContent>
-                    <PaginationItem><PaginationPrevious onClick={() => setEmployeesPage(Math.max(1, employeesPage - 1))} className={employeesPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
-                    {Array.from({ length: Math.ceil(employees.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}><PaginationLink onClick={() => setEmployeesPage(page)} isActive={employeesPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
-                    ))}
-                    <PaginationItem><PaginationNext onClick={() => setEmployeesPage(Math.min(Math.ceil(employees.length / itemsPerPage), employeesPage + 1))} className={employeesPage === Math.ceil(employees.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} /></PaginationItem>
                   </PaginationContent>
                 </Pagination>
               )}

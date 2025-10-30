@@ -72,14 +72,13 @@ const superAdminNavigationItems = [
   {
     title: "Super Admin",
     items: [
-      { title: "Super Admin Dashboard", url: "/super-admin", icon: Crown },
+      { title: "Dashboard", url: "/super-admin", icon: Crown },
     ],
   },
   {
     title: "Management",
     items: [
       { title: "Manage Clinics", url: "/clinics", icon: Building2 },
-      { title: "Manage Employees", url: "/employees", icon: Users },
     ],
   },
   {
