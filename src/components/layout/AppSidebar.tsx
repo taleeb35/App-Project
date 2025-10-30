@@ -58,6 +58,12 @@ const regularNavigationItems = [
       { title: "Vendor Reports", url: "/vendors/reports", icon: FileUp },
     ],
   },
+  {
+    title: "Pharmacy",
+    items: [
+      { title: "Upload Pharmacy Report", url: "/pharmacy/upload", icon: Upload },
+    ],
+  },
 ];
 
 const superAdminNavigationItems = [

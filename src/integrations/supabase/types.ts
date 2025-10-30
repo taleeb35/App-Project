@@ -344,6 +344,117 @@ export type Database = {
           },
         ]
       }
+      pharmacies: {
+        Row: {
+          address: string | null
+          clinic_id: string | null
+          contact_person: string | null
+          created_at: string | null
+          email: string | null
+          id: string
+          license_number: string | null
+          name: string
+          phone: string | null
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          address?: string | null
+          clinic_id?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          license_number?: string | null
+          name: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          address?: string | null
+          clinic_id?: string | null
+          contact_person?: string | null
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          license_number?: string | null
+          name?: string
+          phone?: string | null
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacies_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pharmacy_reports: {
+        Row: {
+          amount: number | null
+          clinic_id: string
+          created_at: string | null
+          grams_sold: number | null
+          id: string
+          patient_id: string
+          pharmacy_id: string
+          product_name: string | null
+          report_month: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number | null
+          clinic_id: string
+          created_at?: string | null
+          grams_sold?: number | null
+          id?: string
+          patient_id: string
+          pharmacy_id: string
+          product_name?: string | null
+          report_month: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number | null
+          clinic_id?: string
+          created_at?: string | null
+          grams_sold?: number | null
+          id?: string
+          patient_id?: string
+          pharmacy_id?: string
+          product_name?: string | null
+          report_month?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pharmacy_reports_clinic_id_fkey"
+            columns: ["clinic_id"]
+            isOneToOne: false
+            referencedRelation: "clinics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_reports_patient_id_fkey"
+            columns: ["patient_id"]
+            isOneToOne: false
+            referencedRelation: "patients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_reports_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           clinic_id: string | null
