@@ -406,6 +406,7 @@ export type Database = {
           product_name: string | null
           report_month: string
           updated_at: string | null
+          vendor_id: string | null
         }
         Insert: {
           amount?: number | null
@@ -418,6 +419,7 @@ export type Database = {
           product_name?: string | null
           report_month: string
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Update: {
           amount?: number | null
@@ -430,6 +432,7 @@ export type Database = {
           product_name?: string | null
           report_month?: string
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -451,6 +454,13 @@ export type Database = {
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pharmacy_reports_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]

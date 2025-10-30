@@ -24,11 +24,11 @@ export default function PharmacyReportUpload() {
   const [selectedPharmacy, setSelectedPharmacy] = useState('');
 
   useEffect(() => {
-    if (user) {
+    if (user && selectedClinic) {
       fetchVendors();
       fetchPharmacies();
     }
-  }, [user]);
+  }, [user, selectedClinic]);
 
   const fetchVendors = async () => {
     if (!user) { setVendors([]); return; }
@@ -57,27 +57,49 @@ export default function PharmacyReportUpload() {
   };
 
   const fetchPharmacies = async () => {
-    if (!user) { setPharmacies([]); return; }
+    if (!user || !selectedClinic) { 
+      setPharmacies([]); 
+      return; 
+    }
     try {
       const { data, error } = await supabase
         .from('pharmacies')
         .select('*')
+        .eq('clinic_id', selectedClinic.id)
         .eq('status', 'active')
         .order('name');
 
       if (error) throw error;
-      setPharmacies(data || []);
       
-      // Auto-select first pharmacy (each sub admin has only 1 pharmacy)
-      if (data && data.length > 0) {
+      // If no pharmacy exists, create a default one
+      if (!data || data.length === 0) {
+        const { data: newPharmacy, error: createError } = await supabase
+          .from('pharmacies')
+          .insert({
+            clinic_id: selectedClinic.id,
+            name: `${selectedClinic.name} Pharmacy`,
+            status: 'active'
+          })
+          .select()
+          .single();
+        
+        if (createError) {
+          console.error('Error creating pharmacy:', createError);
+          return;
+        }
+        
+        if (newPharmacy) {
+          setPharmacies([newPharmacy]);
+          setSelectedPharmacy(newPharmacy.id);
+        }
+      } else {
+        setPharmacies(data);
+        // Auto-select first pharmacy (each sub admin has only 1 pharmacy)
         setSelectedPharmacy(data[0].id);
       }
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: 'Failed to fetch pharmacies',
-        variant: 'destructive',
-      });
+      console.error('Pharmacy fetch error:', error);
+      // Don't show error toast, just log it
     }
   };
 
@@ -121,9 +143,35 @@ export default function PharmacyReportUpload() {
       return;
     }
 
-    if (!selectedVendor || !selectedPharmacy || !reportMonth || !uploadFile) {
-      toast({ title: 'Missing Information', description: 'Please select vendor, pharmacy, month, and upload file', variant: 'destructive' });
+    if (!selectedVendor || !reportMonth || !uploadFile) {
+      toast({ title: 'Missing Information', description: 'Please select vendor, month, and upload file', variant: 'destructive' });
       return;
+    }
+
+    // Ensure pharmacy exists
+    let pharmacyId = selectedPharmacy;
+    if (!pharmacyId) {
+      // Try to create a default pharmacy if none exists
+      const { data: newPharmacy, error: pharmacyError } = await supabase
+        .from('pharmacies')
+        .insert({
+          clinic_id: selectedClinic.id,
+          name: `${selectedClinic.name} Pharmacy`,
+          status: 'active'
+        })
+        .select()
+        .single();
+      
+      if (pharmacyError || !newPharmacy) {
+        toast({ 
+          title: 'Error', 
+          description: 'Failed to create pharmacy. Please contact support.', 
+          variant: 'destructive' 
+        });
+        return;
+      }
+      pharmacyId = newPharmacy.id;
+      setSelectedPharmacy(pharmacyId);
     }
 
     setUploading(true);
@@ -196,7 +244,8 @@ export default function PharmacyReportUpload() {
         }
         
         patientRecords.push({
-          pharmacy_id: selectedPharmacy,
+          pharmacy_id: pharmacyId,
+          vendor_id: selectedVendor,
           clinic_id: selectedClinic.id,
           patient_id: patientId,
           report_month: reportMonth + '-01',
@@ -315,7 +364,7 @@ export default function PharmacyReportUpload() {
           <div className="pt-4">
             <Button
               onClick={handleUpload}
-              disabled={!selectedVendor || !selectedPharmacy || !reportMonth || !uploadFile || uploading || !user}
+              disabled={!selectedVendor || !reportMonth || !uploadFile || uploading || !user}
               className="w-full"
             >
               {uploading ? (
