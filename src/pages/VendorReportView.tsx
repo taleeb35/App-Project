@@ -105,8 +105,9 @@ export default function VendorReportView() {
     // Filter by search term (patient name or K number)
     if (searchTerm) {
       filtered = filtered.filter((report) => {
-        const patientName = `${report.patients.first_name} ${report.patients.last_name}`.toLowerCase();
-        const kNumber = report.patients.k_number.toLowerCase();
+        if (!report.patients) return false;
+        const patientName = `${report.patients.first_name || ''} ${report.patients.last_name || ''}`.toLowerCase();
+        const kNumber = (report.patients.k_number || '').toLowerCase();
         const search = searchTerm.toLowerCase();
         return patientName.includes(search) || kNumber.includes(search);
       });
@@ -276,14 +277,14 @@ export default function VendorReportView() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <p className="font-medium">{report.vendors.name}</p>
+                        <p className="font-medium">{report.vendors?.name || 'Unknown Vendor'}</p>
                       </TableCell>
                       <TableCell>
-                        <p>{report.patients.first_name} {report.patients.last_name}</p>
+                        <p>{report.patients?.first_name || 'N/A'} {report.patients?.last_name || ''}</p>
                       </TableCell>
                       <TableCell>
                         <code className="text-sm bg-muted px-2 py-1 rounded">
-                          {report.patients.k_number}
+                          {report.patients?.k_number || 'N/A'}
                         </code>
                       </TableCell>
                       <TableCell>
