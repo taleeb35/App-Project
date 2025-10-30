@@ -105,12 +105,9 @@ export default function Auth() {
                   {isLoading ? 'Signing in...' : 'Sign In'}
                 </Button>
               </form>
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 text-center">
                 <Button variant="link" onClick={() => setMode('forgot')} className="text-sm">
                   Forgot your password?
-                </Button>
-                <Button variant="link" onClick={() => setMode('signup')} className="text-sm">
-                  Create an account
                 </Button>
               </div>
             </>

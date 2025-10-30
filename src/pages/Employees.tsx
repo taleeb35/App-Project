@@ -38,6 +38,7 @@ export default function Employees() {
     email: '',
     password: '',
     fullName: '',
+    phone: '',
     clinicId: '',
   });
 
@@ -116,10 +117,10 @@ export default function Employees() {
   };
 
   const handleAddEmployee = async () => {
-    if (!newEmployee.email || !newEmployee.password || !newEmployee.fullName || !newEmployee.clinicId) {
+    if (!newEmployee.email || !newEmployee.password || !newEmployee.fullName || !newEmployee.phone || !newEmployee.clinicId) {
       toast({
         title: 'Error',
-        description: 'Please fill all fields',
+        description: 'Please fill all required fields',
         variant: 'destructive',
       });
       return;
@@ -162,11 +163,11 @@ export default function Employees() {
 
       toast({
         title: 'Success',
-        description: 'Employee added successfully',
+        description: 'Sub Admin account created successfully. Share the credentials with them.',
       });
 
       setIsAddDialogOpen(false);
-      setNewEmployee({ email: '', password: '', fullName: '', clinicId: '' });
+      setNewEmployee({ email: '', password: '', fullName: '', phone: '', clinicId: '' });
       fetchEmployees();
     } catch (error: any) {
       toast({
@@ -209,52 +210,66 @@ export default function Employees() {
       <div className="space-y-6">
         <div className="flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold">Clinic Employees</h1>
-            <p className="text-muted-foreground">Manage employee access to clinics</p>
+            <h1 className="text-3xl font-bold">Sub Admin Management</h1>
+            <p className="text-muted-foreground">Create and manage sub admin accounts for clinic access</p>
           </div>
 
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Add Employee
+                Create Sub Admin
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Employee</DialogTitle>
+                <DialogTitle>Create New Sub Admin</DialogTitle>
                 <DialogDescription>
-                  Create a new employee account and assign to a clinic
+                  Create a sub admin account with login credentials to share
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="fullName">Full Name</Label>
+                  <Label htmlFor="fullName">Full Name *</Label>
                   <Input
                     id="fullName"
                     value={newEmployee.fullName}
                     onChange={(e) => setNewEmployee({ ...newEmployee, fullName: e.target.value })}
                     placeholder="John Doe"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     type="email"
                     value={newEmployee.email}
                     onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
-                    placeholder="employee@example.com"
+                    placeholder="admin@example.com"
+                    required
                   />
                 </div>
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                    placeholder="+1 (555) 123-4567"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Set Password *</Label>
                   <Input
                     id="password"
                     type="password"
                     value={newEmployee.password}
                     onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
-                    placeholder="Enter password"
+                    placeholder="Create a secure password"
+                    required
                   />
                 </div>
                 <div>
@@ -276,7 +291,7 @@ export default function Employees() {
                   </Select>
                 </div>
                 <Button onClick={handleAddEmployee} disabled={loading} className="w-full">
-                  {loading ? 'Adding...' : 'Add Employee'}
+                  {loading ? 'Creating Account...' : 'Create Sub Admin Account'}
                 </Button>
               </div>
             </DialogContent>
@@ -285,8 +300,8 @@ export default function Employees() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Employee List</CardTitle>
-            <CardDescription>View and manage all clinic employees</CardDescription>
+            <CardTitle>Sub Admin Accounts</CardTitle>
+            <CardDescription>All sub admin accounts with clinic assignments</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
