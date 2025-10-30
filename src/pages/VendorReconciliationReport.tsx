@@ -122,6 +122,7 @@ export default function VendorReconciliationReport() {
       const totalPatients = allVendorPatients?.length || 0;
 
       // Get patients who have reports for this month and vendor
+      // IMPORTANT: Only check for reports from patients associated with this vendor
       const monthStart = startOfMonth(new Date(selectedMonth));
       const monthEnd = endOfMonth(new Date(selectedMonth));
 
@@ -130,6 +131,7 @@ export default function VendorReconciliationReport() {
         .select('patient_id')
         .eq('clinic_id', selectedClinic.id)
         .eq('vendor_id', selectedVendor)
+        .in('patient_id', vendorPatientIds)
         .gte('report_month', format(monthStart, 'yyyy-MM-dd'))
         .lte('report_month', format(monthEnd, 'yyyy-MM-dd'));
 
