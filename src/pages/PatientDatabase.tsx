@@ -289,19 +289,19 @@ export default function PatientDatabase() {
     setIsHistoryDialogOpen(true);
     
     try {
-      // Fetch purchase history from patient_purchases table
-      const { data: purchases, error } = await supabase
-        .from('patient_purchases')
+      // Fetch purchase history from vendor_reports table
+      const { data: reports, error } = await supabase
+        .from('vendor_reports')
         .select('*, vendors(name)')
         .eq('patient_id', patient.id)
-        .order('purchase_date', { ascending: false });
+        .order('report_month', { ascending: false });
 
       if (error) throw error;
 
       // Group by month
       const monthlyData: any = {};
-      purchases?.forEach(purchase => {
-        const monthKey = new Date(purchase.purchase_date).toISOString().slice(0, 7);
+      reports?.forEach(report => {
+        const monthKey = new Date(report.report_month).toISOString().slice(0, 7);
         if (!monthlyData[monthKey]) {
           monthlyData[monthKey] = {
             month: monthKey,
@@ -310,15 +310,15 @@ export default function PatientDatabase() {
             vendors: {}
           };
         }
-        monthlyData[monthKey].totalAmount += Number(purchase.amount) || 0;
-        monthlyData[monthKey].totalGrams += Number(purchase.grams) || 0;
+        monthlyData[monthKey].totalAmount += Number(report.amount) || 0;
+        monthlyData[monthKey].totalGrams += Number(report.grams_sold) || 0;
         
-        const vendorName = (purchase.vendors as any)?.name || 'Unknown Vendor';
+        const vendorName = (report.vendors as any)?.name || 'Unknown Vendor';
         if (!monthlyData[monthKey].vendors[vendorName]) {
           monthlyData[monthKey].vendors[vendorName] = { amount: 0, grams: 0 };
         }
-        monthlyData[monthKey].vendors[vendorName].amount += Number(purchase.amount) || 0;
-        monthlyData[monthKey].vendors[vendorName].grams += Number(purchase.grams) || 0;
+        monthlyData[monthKey].vendors[vendorName].amount += Number(report.amount) || 0;
+        monthlyData[monthKey].vendors[vendorName].grams += Number(report.grams_sold) || 0;
       });
 
       // Get last 6 months
