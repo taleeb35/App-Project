@@ -87,16 +87,39 @@ export default function VendorReconciliationReport() {
 
     setLoading(true);
     try {
-      // Get all active patients for the clinic
-      const { data: allPatients, error: patientsError } = await supabase
+      // Get patients associated with this specific vendor
+      const { data: vendorPatients, error: vendorPatientsError } = await supabase
+        .from('patient_vendors')
+        .select('patient_id')
+        .eq('vendor_id', selectedVendor);
+
+      if (vendorPatientsError) throw vendorPatientsError;
+
+      const vendorPatientIds = vendorPatients?.map((vp) => vp.patient_id) || [];
+
+      if (vendorPatientIds.length === 0) {
+        // No patients associated with this vendor
+        setMissingPatients([]);
+        setStats({
+          totalPatients: 0,
+          reportedPatients: 0,
+          missingPatients: 0,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Get full patient details for those associated with this vendor
+      const { data: allVendorPatients, error: patientsError } = await supabase
         .from('patients')
         .select('id, k_number, first_name, last_name, patient_type, email, phone')
         .eq('clinic_id', selectedClinic.id)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .in('id', vendorPatientIds);
 
       if (patientsError) throw patientsError;
 
-      const totalPatients = allPatients?.length || 0;
+      const totalPatients = allVendorPatients?.length || 0;
 
       // Get patients who have reports for this month and vendor
       const monthStart = startOfMonth(new Date(selectedMonth));
@@ -118,7 +141,7 @@ export default function VendorReconciliationReport() {
       );
 
       // Find missing patients (those without reports)
-      const missing = allPatients?.filter(
+      const missing = allVendorPatients?.filter(
         (patient) => !reportedPatientIds.has(patient.id)
       ) || [];
 
@@ -207,7 +230,7 @@ export default function VendorReconciliationReport() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalPatients}</div>
-              <p className="text-xs text-muted-foreground">Active patients in clinic</p>
+              <p className="text-xs text-muted-foreground">Active patients for this vendor</p>
             </CardContent>
           </Card>
 
