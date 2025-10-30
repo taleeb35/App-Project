@@ -568,10 +568,17 @@ export default function PatientDatabase() {
                         <TableCell><code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code></TableCell>
                         <TableCell>
                           <p className="text-sm">
-                            {vendorFilter !== 'all_vendors' 
-                              ? patient.associatedVendors?.find(v => v.id === vendorFilter)?.name || 'N/A'
-                              : patient.associatedVendors?.map(v => v.name).join(', ') || 'N/A'
-                            }
+                            {(() => {
+                              // Show preferred vendor if set
+                              if (patient.vendors?.name) {
+                                return patient.vendors.name;
+                              }
+                              // Otherwise show associated vendors
+                              if (vendorFilter !== 'all_vendors') {
+                                return patient.associatedVendors?.find(v => v.id === vendorFilter)?.name || 'N/A';
+                              }
+                              return patient.associatedVendors?.map(v => v.name).join(', ') || 'N/A';
+                            })()}
                           </p>
                         </TableCell>
                         <TableCell>
