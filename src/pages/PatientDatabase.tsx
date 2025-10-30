@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight, TrendingUp } from "lucide-react";
+import { Users, Search, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight, TrendingUp, History } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -70,6 +70,9 @@ export default function PatientDatabase() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
+  const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [formData, setFormData] = useState({
@@ -278,6 +281,54 @@ export default function PatientDatabase() {
         setPatients(prev => prev.map(p => p.id === patientId ? { ...p, status: newStatus } : p));
     } catch (error: any) {
         toast({ title: "Error", description: `Failed to update status: ${error.message}`, variant: "destructive" });
+    }
+  };
+
+  const handleViewHistory = async (patient: Patient) => {
+    setHistoryPatient(patient);
+    setIsHistoryDialogOpen(true);
+    
+    try {
+      // Fetch purchase history from patient_purchases table
+      const { data: purchases, error } = await supabase
+        .from('patient_purchases')
+        .select('*, vendors(name)')
+        .eq('patient_id', patient.id)
+        .order('purchase_date', { ascending: false });
+
+      if (error) throw error;
+
+      // Group by month
+      const monthlyData: any = {};
+      purchases?.forEach(purchase => {
+        const monthKey = new Date(purchase.purchase_date).toISOString().slice(0, 7);
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = {
+            month: monthKey,
+            totalAmount: 0,
+            totalGrams: 0,
+            vendors: {}
+          };
+        }
+        monthlyData[monthKey].totalAmount += Number(purchase.amount) || 0;
+        monthlyData[monthKey].totalGrams += Number(purchase.grams) || 0;
+        
+        const vendorName = (purchase.vendors as any)?.name || 'Unknown Vendor';
+        if (!monthlyData[monthKey].vendors[vendorName]) {
+          monthlyData[monthKey].vendors[vendorName] = { amount: 0, grams: 0 };
+        }
+        monthlyData[monthKey].vendors[vendorName].amount += Number(purchase.amount) || 0;
+        monthlyData[monthKey].vendors[vendorName].grams += Number(purchase.grams) || 0;
+      });
+
+      // Get last 6 months
+      const sortedMonths = Object.values(monthlyData).sort((a: any, b: any) => 
+        b.month.localeCompare(a.month)
+      ).slice(0, 6);
+
+      setPurchaseHistory(sortedMonths);
+    } catch (error: any) {
+      toast({ title: "Error", description: "Failed to fetch purchase history", variant: "destructive" });
     }
   };
 
@@ -533,6 +584,7 @@ export default function PatientDatabase() {
                         <TableCell><p className="text-sm">{patient.lastPurchaseDate ? patient.lastPurchaseDate.toLocaleDateString() : 'N/A'}</p></TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => handleViewHistory(patient)} title="View Purchase History"><History className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEditPatient(patient)}><Edit className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeletePatient(patient.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
@@ -587,6 +639,97 @@ export default function PatientDatabase() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleUpdatePatient}>Update Patient</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <History className="h-5 w-5" />
+              Purchase History - {historyPatient?.first_name} {historyPatient?.last_name}
+            </DialogTitle>
+            <DialogDescription>
+              Last 6 months of purchase activity across all vendors
+            </DialogDescription>
+          </DialogHeader>
+
+          {purchaseHistory.length === 0 ? (
+            <div className="py-8 text-center text-muted-foreground">
+              No purchase history available for this patient.
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Summary Cards */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-primary">
+                      ${purchaseHistory.reduce((sum, m) => sum + m.totalAmount, 0).toFixed(2)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Total Spent</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-primary">
+                      {purchaseHistory.reduce((sum, m) => sum + m.totalGrams, 0).toFixed(2)}g
+                    </div>
+                    <p className="text-sm text-muted-foreground">Total Grams</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-2xl font-bold text-primary">
+                      ${(purchaseHistory.reduce((sum, m) => sum + m.totalAmount, 0) / purchaseHistory.length).toFixed(2)}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Avg per Month</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Monthly Breakdown */}
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg">Monthly Breakdown</h3>
+                {purchaseHistory.map((monthData) => (
+                  <Card key={monthData.month}>
+                    <CardHeader>
+                      <CardTitle className="text-base">
+                        {new Date(monthData.month + '-01').toLocaleString('default', { month: 'long', year: 'numeric' })}
+                      </CardTitle>
+                      <CardDescription>
+                        Total: ${monthData.totalAmount.toFixed(2)} | {monthData.totalGrams.toFixed(2)}g
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Vendor</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
+                            <TableHead className="text-right">Grams</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {Object.entries(monthData.vendors).map(([vendorName, data]: [string, any]) => (
+                            <TableRow key={vendorName}>
+                              <TableCell className="font-medium">{vendorName}</TableCell>
+                              <TableCell className="text-right">${data.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-right">{data.grams.toFixed(2)}g</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsHistoryDialogOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
