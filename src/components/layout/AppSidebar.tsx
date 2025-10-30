@@ -61,7 +61,9 @@ const regularNavigationItems = [
   {
     title: "Pharmacy",
     items: [
-      { title: "Upload Pharmacy Report", url: "/pharmacy/upload", icon: Upload },
+      { title: "Pharmacy Hub", url: "/pharmacy/reports", icon: Pill },
+      { title: "Upload Report", url: "/pharmacy/upload", icon: Upload },
+      { title: "View Reports", url: "/pharmacy/reports-view", icon: FileUp },
     ],
   },
 ];
