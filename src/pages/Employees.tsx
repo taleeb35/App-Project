@@ -40,6 +40,7 @@ export default function Employees() {
     fullName: '',
     phone: '',
     clinicId: '',
+    status: 'active',
   });
 
   useEffect(() => {
@@ -146,7 +147,11 @@ export default function Employees() {
       // Update profile with clinic_id
       const { error: profileError } = await supabase
         .from('profiles' as any)
-        .update({ clinic_id: newEmployee.clinicId })
+        .update({ 
+          clinic_id: newEmployee.clinicId,
+          phone: newEmployee.phone,
+          status: newEmployee.status,
+        })
         .eq('id', authData.user.id);
 
       if (profileError) throw profileError;
@@ -167,7 +172,7 @@ export default function Employees() {
       });
 
       setIsAddDialogOpen(false);
-      setNewEmployee({ email: '', password: '', fullName: '', phone: '', clinicId: '' });
+      setNewEmployee({ email: '', password: '', fullName: '', phone: '', clinicId: '', status: 'active' });
       fetchEmployees();
     } catch (error: any) {
       toast({
@@ -287,6 +292,21 @@ export default function Employees() {
                           {clinic.name}
                         </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="status">Account Status *</Label>
+                  <Select
+                    value={newEmployee.status}
+                    onValueChange={(value) => setNewEmployee({ ...newEmployee, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active (Can Login)</SelectItem>
+                      <SelectItem value="draft">Draft (Cannot Login)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

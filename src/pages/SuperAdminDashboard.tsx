@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Plus, Trash2, Edit } from "lucide-react";
 
 type Clinic = {
   id: string;
@@ -25,6 +26,8 @@ type Employee = {
   clinic_id: string;
   email: string;
   full_name: string;
+  phone: string;
+  status: string;
   clinic_name: string;
 };
 
@@ -72,11 +75,17 @@ export default function SuperAdminDashboard() {
   const [patientTypeFilter, setPatientTypeFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [patientsPage, setPatientsPage] = useState(1);
-  const [clinicsPage, setClinicsPage] = useState(1);
   const [employeesPage, setEmployeesPage] = useState(1);
-  const [vendorsPage, setVendorsPage] = useState(1);
   const itemsPerPage = 10;
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    email: '',
+    password: '',
+    fullName: '',
+    phone: '',
+    clinicId: '',
+    status: 'active',
+  });
 
   useEffect(() => {
     fetchAllData();
@@ -107,7 +116,7 @@ export default function SuperAdminDashboard() {
       const userIds = employeesData?.map((emp: any) => emp.user_id) || [];
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('id, email, full_name')
+        .select('id, email, full_name, phone, status')
         .in('id', userIds);
       if (profilesError) throw profilesError;
 
@@ -120,6 +129,8 @@ export default function SuperAdminDashboard() {
           clinic_id: emp.clinic_id,
           email: profile?.email || '',
           full_name: profile?.full_name || '',
+          phone: profile?.phone || '',
+          status: profile?.status || 'active',
           clinic_name: emp.clinics?.name || '',
         };
       }) || [];
@@ -178,6 +189,134 @@ export default function SuperAdminDashboard() {
         title: "Error",
         description: "Failed to fetch data",
         variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddEmployee = async () => {
+    if (!newEmployee.email || !newEmployee.password || !newEmployee.fullName || !newEmployee.phone || !newEmployee.clinicId) {
+      toast({
+        title: 'Error',
+        description: 'Please fill all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Create user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: newEmployee.email,
+        password: newEmployee.password,
+        options: {
+          data: {
+            full_name: newEmployee.fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
+
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // Update profile with clinic_id, phone, and status
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          clinic_id: newEmployee.clinicId,
+          phone: newEmployee.phone,
+          status: newEmployee.status,
+        })
+        .eq('id', authData.user.id);
+
+      if (profileError) throw profileError;
+
+      // Create clinic employee assignment
+      const { error: assignError } = await supabase
+        .from('clinic_employees')
+        .insert({
+          user_id: authData.user.id,
+          clinic_id: newEmployee.clinicId,
+        });
+
+      if (assignError) throw assignError;
+
+      toast({
+        title: 'Success',
+        description: 'Sub Admin account created successfully. Share the credentials with them.',
+      });
+
+      setIsAddDialogOpen(false);
+      setNewEmployee({ email: '', password: '', fullName: '', phone: '', clinicId: '', status: 'active' });
+      fetchAllData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to add sub admin',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteEmployee = async (employeeId: string, userId: string) => {
+    if (!confirm('Are you sure you want to remove this sub admin?')) return;
+
+    setLoading(true);
+    try {
+      // Delete clinic employee assignment
+      const { error: assignError } = await supabase
+        .from('clinic_employees')
+        .delete()
+        .eq('id', employeeId);
+
+      if (assignError) throw assignError;
+
+      // Note: We don't delete the user from auth.users or profiles
+      // Just remove their clinic assignment
+
+      toast({
+        title: 'Success',
+        description: 'Sub admin removed successfully',
+      });
+
+      fetchAllData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to remove sub admin',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (userId: string, newStatus: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: `Status updated to ${newStatus}`,
+      });
+
+      fetchAllData();
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update status',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
@@ -297,96 +436,178 @@ export default function SuperAdminDashboard() {
         ))}
       </div>
 
-      {/* Tabs for different views */}
-      <Tabs defaultValue="clinics" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="clinics">Clinics</TabsTrigger>
-          <TabsTrigger value="vendors">Vendors</TabsTrigger>
-        </TabsList>
-
-        {/* Clinics Tab */}
-        <TabsContent value="clinics">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Clinics ({clinics.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Clinic Name</TableHead>
-                    <TableHead>License #</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Address</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clinics.slice((clinicsPage - 1) * itemsPerPage, clinicsPage * itemsPerPage).map((clinic) => (
-                    <TableRow key={clinic.id}>
-                      <TableCell className="font-medium">{clinic.name}</TableCell>
-                      <TableCell>{(clinic as any).license_number || 'N/A'}</TableCell>
-                      <TableCell>{(clinic as any).email || 'N/A'}</TableCell>
-                      <TableCell>{(clinic as any).phone || 'N/A'}</TableCell>
-                      <TableCell>{(clinic as any).address || 'N/A'}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {Math.ceil(clinics.length / itemsPerPage) > 1 && (
-                <Pagination className="mt-4">
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious onClick={() => setClinicsPage(Math.max(1, clinicsPage - 1))} className={clinicsPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                    </PaginationItem>
-                    {Array.from({ length: Math.ceil(clinics.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
-                      <PaginationItem key={page}><PaginationLink onClick={() => setClinicsPage(page)} isActive={clinicsPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
-                    ))}
-                    <PaginationItem>
-                      <PaginationNext onClick={() => setClinicsPage(Math.min(Math.ceil(clinics.length / itemsPerPage), clinicsPage + 1))} className={clinicsPage === Math.ceil(clinics.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Vendors Tab */}
-        <TabsContent value="vendors">
-          <Card>
-            <CardHeader>
-              <CardTitle>All Vendors ({vendors.length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vendor Name</TableHead>
-                    <TableHead>License #</TableHead>
-                    <TableHead>Clinic</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vendors.map((vendor) => (
-                    <TableRow key={vendor.id}>
-                      <TableCell className="font-medium">{vendor.name}</TableCell>
-                      <TableCell>{vendor.license_number || 'N/A'}</TableCell>
-                      <TableCell>{vendor.clinic_name}</TableCell>
-                      <TableCell>
-                        <Badge variant={vendor.status === 'active' ? 'default' : 'secondary'}>
-                          {vendor.status || 'unknown'}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      {/* Sub Admin Management Section */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Sub Admin Management</CardTitle>
+            <CardDescription>Create and manage sub admin accounts for clinic access</CardDescription>
+          </div>
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Create Sub Admin
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create New Sub Admin</DialogTitle>
+                <DialogDescription>
+                  Create a sub admin account with login credentials to share
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="fullName">Full Name *</Label>
+                  <Input
+                    id="fullName"
+                    value={newEmployee.fullName}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, fullName: e.target.value })}
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="email">Email *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newEmployee.email}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, email: e.target.value })}
+                    placeholder="admin@example.com"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="phone">Phone Number *</Label>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    value={newEmployee.phone}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, phone: e.target.value })}
+                    placeholder="+1 (555) 123-4567"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="password">Set Password *</Label>
+                  <Input
+                    id="password"
+                    type="password"
+                    value={newEmployee.password}
+                    onChange={(e) => setNewEmployee({ ...newEmployee, password: e.target.value })}
+                    placeholder="Create a secure password"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="clinic">Assign to Clinic *</Label>
+                  <Select
+                    value={newEmployee.clinicId}
+                    onValueChange={(value) => setNewEmployee({ ...newEmployee, clinicId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select clinic" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {clinics.map((clinic) => (
+                        <SelectItem key={clinic.id} value={clinic.id}>
+                          {clinic.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="status">Account Status *</Label>
+                  <Select
+                    value={newEmployee.status}
+                    onValueChange={(value) => setNewEmployee({ ...newEmployee, status: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active (Can Login)</SelectItem>
+                      <SelectItem value="draft">Draft (Cannot Login)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleAddEmployee} disabled={loading} className="w-full">
+                  {loading ? 'Creating Account...' : 'Create Sub Admin Account'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Assigned Clinic</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {employees.slice((employeesPage - 1) * itemsPerPage, employeesPage * itemsPerPage).map((employee) => (
+                <TableRow key={employee.id}>
+                  <TableCell className="font-medium">{employee.full_name}</TableCell>
+                  <TableCell>{employee.email}</TableCell>
+                  <TableCell>{employee.phone || 'N/A'}</TableCell>
+                  <TableCell>{employee.clinic_name}</TableCell>
+                  <TableCell>
+                    <Select
+                      value={employee.status}
+                      onValueChange={(value) => handleUpdateStatus(employee.user_id, value)}
+                    >
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">
+                          <Badge variant="default" className="w-full">Active</Badge>
+                        </SelectItem>
+                        <SelectItem value="draft">
+                          <Badge variant="secondary" className="w-full">Draft</Badge>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteEmployee(employee.id, employee.user_id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {Math.ceil(employees.length / itemsPerPage) > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious onClick={() => setEmployeesPage(Math.max(1, employeesPage - 1))} className={employeesPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                </PaginationItem>
+                {Array.from({ length: Math.ceil(employees.length / itemsPerPage) }, (_, i) => i + 1).map((page) => (
+                  <PaginationItem key={page}><PaginationLink onClick={() => setEmployeesPage(page)} isActive={employeesPage === page} className="cursor-pointer">{page}</PaginationLink></PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext onClick={() => setEmployeesPage(Math.min(Math.ceil(employees.length / itemsPerPage), employeesPage + 1))} className={employeesPage === Math.ceil(employees.length / itemsPerPage) ? "pointer-events-none opacity-50" : "cursor-pointer"} />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

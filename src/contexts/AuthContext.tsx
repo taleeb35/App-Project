@@ -72,7 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -83,6 +83,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: error.message,
         variant: "destructive",
       });
+      return { error };
+    }
+
+    // Check user status after successful authentication
+    if (data.user) {
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('status')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+      } else if (profileData?.status === 'draft') {
+        // Sign out the user immediately
+        await supabase.auth.signOut();
+        
+        const draftError = new Error('Your account is not yet activated. Please contact your administrator.');
+        toast({
+          title: "Account Inactive",
+          description: "Your account is not yet activated. Please contact your administrator.",
+          variant: "destructive",
+        });
+        return { error: draftError };
+      }
     }
 
     return { error };
