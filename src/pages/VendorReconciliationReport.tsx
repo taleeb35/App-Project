@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Calendar, Package, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -37,6 +38,8 @@ export default function VendorReconciliationReport() {
     reportedPatients: 0,
     missingPatients: 0,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   // Generate months for the last 12 months
   const months = Array.from({ length: 12 }, (_, i) => {
@@ -164,6 +167,24 @@ export default function VendorReconciliationReport() {
     }
   };
 
+  const totalPages = Math.ceil(missingPatients.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, missingPatients.length);
+  const paginatedPatients = missingPatients.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+    if (start > 2) pages.push('ellipsis-start');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push('ellipsis-end');
+    if (totalPages > 1) pages.push(totalPages);
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -286,39 +307,104 @@ export default function VendorReconciliationReport() {
                 <p>No missing patients found. All patients have reported purchases!</p>
               </div>
             ) : (
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>K Number</TableHead>
-                      <TableHead>Patient Name</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Phone</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {missingPatients.map((patient) => (
-                      <TableRow key={patient.id}>
-                        <TableCell>
-                          <code className="text-sm bg-muted px-2 py-1 rounded">
-                            {patient.k_number}
-                          </code>
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {patient.first_name} {patient.last_name}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'secondary'}>
-                            {patient.patient_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{patient.email || 'N/A'}</TableCell>
-                        <TableCell>{patient.phone || 'N/A'}</TableCell>
+              <div className="space-y-4">
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>K Number</TableHead>
+                        <TableHead>Patient Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead>Phone</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedPatients.map((patient) => (
+                        <TableRow key={patient.id}>
+                          <TableCell>
+                            <code className="text-sm bg-muted px-2 py-1 rounded">
+                              {patient.k_number}
+                            </code>
+                          </TableCell>
+                          <TableCell className="font-medium">
+                            {patient.first_name} {patient.last_name}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={patient.patient_type === 'Veteran' ? 'default' : 'secondary'}>
+                              {patient.patient_type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{patient.email || 'N/A'}</TableCell>
+                          <TableCell>{patient.phone || 'N/A'}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">
+                      Showing {startIndex + 1}-{endIndex} of {missingPatients.length}
+                    </span>
+                    <Select value={pageSize.toString()} onValueChange={(value) => {
+                      setPageSize(Number(value));
+                      setCurrentPage(1);
+                    }}>
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="25">25 / page</SelectItem>
+                        <SelectItem value="50">50 / page</SelectItem>
+                        <SelectItem value="75">75 / page</SelectItem>
+                        <SelectItem value="100">100 / page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <Pagination>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious 
+                            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                            className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+
+                        {getPageNumbers().map((page, index) => {
+                          if (typeof page === 'string') {
+                            return (
+                              <PaginationItem key={`${page}-${index}`}>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            );
+                          }
+                          return (
+                            <PaginationItem key={page}>
+                              <PaginationLink
+                                onClick={() => setCurrentPage(page)}
+                                isActive={currentPage === page}
+                                className="cursor-pointer"
+                              >
+                                {page}
+                              </PaginationLink>
+                            </PaginationItem>
+                          );
+                        })}
+
+                        <PaginationItem>
+                          <PaginationNext 
+                            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                            className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>

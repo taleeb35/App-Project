@@ -4,10 +4,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, User, CheckCircle, X, Eye } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination, PaginationContent, PaginationEllipsis, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from "@/components/ui/pagination";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Exceptions() {
   const { toast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [exceptions, setExceptions] = useState([
     {
       id: 1,
@@ -95,6 +99,24 @@ export default function Exceptions() {
     }
   };
 
+  const totalPages = Math.ceil(pendingExceptions.length / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, pendingExceptions.length);
+  const paginatedExceptions = pendingExceptions.slice(startIndex, endIndex);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    pages.push(1);
+    let start = Math.max(2, currentPage - 1);
+    let end = Math.min(totalPages - 1, currentPage + 1);
+    if (start > 2) pages.push('ellipsis-start');
+    for (let i = start; i <= end; i++) pages.push(i);
+    if (end < totalPages - 1) pages.push('ellipsis-end');
+    if (totalPages > 1) pages.push(totalPages);
+    return pages;
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -166,79 +188,154 @@ export default function Exceptions() {
           <CardDescription>Issues that require manual review and resolution</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Priority</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Patient</TableHead>
-                <TableHead>Issue Description</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Suggested Action</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pendingExceptions.map((exception) => {
-                const TypeIcon = getTypeIcon(exception.type);
-                return (
-                  <TableRow key={exception.id}>
-                    <TableCell>
-                      <Badge variant={getPriorityColor(exception.priority) as any}>
-                        {exception.priority}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <TypeIcon className="h-4 w-4 text-muted-foreground" />
-                        <span className="text-sm">{exception.type}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-foreground">{exception.patient}</p>
-                        <p className="text-xs text-muted-foreground">{exception.kNumber}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm max-w-xs">{exception.issue}</p>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{exception.vendor}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm text-muted-foreground">{exception.suggestedMatch}</p>
-                    </TableCell>
-                    <TableCell>
-                      <p className="text-sm">{exception.date}</p>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleResolve(exception.id, 'accepted')}
-                        >
-                          <CheckCircle className="h-4 w-4 text-success" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleResolve(exception.id, 'rejected')}
-                        >
-                          <X className="h-4 w-4 text-destructive" />
-                        </Button>
-                        <Button variant="ghost" size="sm">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </div>
+          <div className="space-y-4">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Priority</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>Issue Description</TableHead>
+                  <TableHead>Vendor</TableHead>
+                  <TableHead>Suggested Action</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedExceptions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No pending exceptions
                     </TableCell>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+                ) : (
+                  paginatedExceptions.map((exception) => {
+                    const TypeIcon = getTypeIcon(exception.type);
+                    return (
+                      <TableRow key={exception.id}>
+                        <TableCell>
+                          <Badge variant={getPriorityColor(exception.priority) as any}>
+                            {exception.priority}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <TypeIcon className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">{exception.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div>
+                            <p className="font-medium text-foreground">{exception.patient}</p>
+                            <p className="text-xs text-muted-foreground">{exception.kNumber}</p>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm max-w-xs">{exception.issue}</p>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{exception.vendor}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm text-muted-foreground">{exception.suggestedMatch}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="text-sm">{exception.date}</p>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleResolve(exception.id, 'accepted')}
+                            >
+                              <CheckCircle className="h-4 w-4 text-success" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleResolve(exception.id, 'rejected')}
+                            >
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                            <Button variant="ghost" size="sm">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+
+            {pendingExceptions.length > 0 && (
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">
+                    Showing {startIndex + 1}-{endIndex} of {pendingExceptions.length}
+                  </span>
+                  <Select value={pageSize.toString()} onValueChange={(value) => {
+                    setPageSize(Number(value));
+                    setCurrentPage(1);
+                  }}>
+                    <SelectTrigger className="w-[100px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="25">25 / page</SelectItem>
+                      <SelectItem value="50">50 / page</SelectItem>
+                      <SelectItem value="75">75 / page</SelectItem>
+                      <SelectItem value="100">100 / page</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {totalPages > 1 && (
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious 
+                          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                          className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+
+                      {getPageNumbers().map((page, index) => {
+                        if (typeof page === 'string') {
+                          return (
+                            <PaginationItem key={`${page}-${index}`}>
+                              <PaginationEllipsis />
+                            </PaginationItem>
+                          );
+                        }
+                        return (
+                          <PaginationItem key={page}>
+                            <PaginationLink
+                              onClick={() => setCurrentPage(page)}
+                              isActive={currentPage === page}
+                              className="cursor-pointer"
+                            >
+                              {page}
+                            </PaginationLink>
+                          </PaginationItem>
+                        );
+                      })}
+
+                      <PaginationItem>
+                        <PaginationNext 
+                          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                          className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                )}
+              </div>
+            )}
+          </div>
         </CardContent>
       </Card>
 
