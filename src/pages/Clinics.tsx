@@ -238,7 +238,7 @@ export default function Clinics() {
 
       toast({
         title: "Success",
-        description: "Sub Admin updated successfully",
+        description: "Clinic updated successfully",
       });
 
       setIsEditSubAdminDialogOpen(false);
@@ -248,7 +248,7 @@ export default function Clinics() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to update sub admin",
+        description: error.message || "Failed to update clinic",
         variant: "destructive",
       });
     } finally {
@@ -257,7 +257,7 @@ export default function Clinics() {
   };
 
   const handleDeleteSubAdmin = async (userId: string, clinicId: string) => {
-    if (!confirm("Are you sure you want to remove this sub admin?")) return;
+    if (!confirm("Are you sure you want to remove this admin?")) return;
 
     setLoading(true);
     try {
@@ -272,14 +272,14 @@ export default function Clinics() {
 
       toast({
         title: "Success",
-        description: "Sub admin removed successfully",
+        description: "Administrator removed successfully",
       });
 
       fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to remove sub admin",
+        description: error.message || "Failed to remove administrator",
         variant: "destructive",
       });
     } finally {
@@ -319,7 +319,7 @@ export default function Clinics() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Clinic Management</h1>
-          <p className="text-muted-foreground">Manage clinic locations and their sub admins</p>
+          <p className="text-muted-foreground">Manage clinics and their administrators</p>
         </div>
         
         <Dialog open={isAddSubAdminDialogOpen} onOpenChange={setIsAddSubAdminDialogOpen}>
@@ -345,7 +345,7 @@ export default function Clinics() {
                 />
               </div>
               <div>
-                <Label htmlFor="fullName">Full Name *</Label>
+                <Label htmlFor="fullName">Person Name *</Label>
                 <Input
                   id="fullName"
                   value={subAdminFormData.fullName}
@@ -439,7 +439,7 @@ export default function Clinics() {
                   {clinics.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No clinics found. Add your first sub admin to get started.
+                        No clinics found. Add your first clinic to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -600,12 +600,12 @@ export default function Clinics() {
       <Dialog open={isEditSubAdminDialogOpen} onOpenChange={setIsEditSubAdminDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Sub Admin</DialogTitle>
-            <DialogDescription>Update sub admin information</DialogDescription>
+            <DialogTitle>Edit Clinic</DialogTitle>
+            <DialogDescription>Update clinic information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <Label htmlFor="edit_fullName">Full Name *</Label>
+              <Label htmlFor="edit_fullName">Person Name *</Label>
               <Input
                 id="edit_fullName"
                 value={subAdminFormData.fullName}
@@ -635,16 +635,6 @@ export default function Clinics() {
               />
             </div>
             <div>
-              <Label htmlFor="edit_clinic">Assigned Clinic</Label>
-              <Input
-                id="edit_clinic"
-                value={clinics.find(c => c.id === editingSubAdmin?.clinic_id)?.name || ''}
-                disabled
-                className="bg-muted"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Clinic assignment cannot be changed</p>
-            </div>
-            <div>
               <Label htmlFor="edit_status">Account Status *</Label>
               <Select
                 value={subAdminFormData.status}
@@ -663,7 +653,7 @@ export default function Clinics() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsEditSubAdminDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleUpdateSubAdmin} disabled={loading}>
-              {loading ? 'Updating...' : 'Update Sub Admin'}
+              {loading ? 'Updating...' : 'Update Clinic'}
             </Button>
           </DialogFooter>
         </DialogContent>
