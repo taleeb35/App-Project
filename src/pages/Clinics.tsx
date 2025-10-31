@@ -37,11 +37,11 @@ export default function Clinics() {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [subAdminFormData, setSubAdminFormData] = useState({
+    clinicName: "",
     fullName: "",
     email: "",
     phone: "",
     password: "",
-    clinicId: "",
     status: "active",
   });
 
@@ -110,7 +110,7 @@ export default function Clinics() {
   };
 
   const handleAddSubAdmin = async () => {
-    if (!subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone || !subAdminFormData.password || !subAdminFormData.clinicId) {
+    if (!subAdminFormData.clinicName || !subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone || !subAdminFormData.password) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
@@ -121,6 +121,18 @@ export default function Clinics() {
 
     setLoading(true);
     try {
+      // Create clinic first
+      const { data: clinicData, error: clinicError } = await supabase
+        .from('clinics')
+        .insert({
+          name: subAdminFormData.clinicName,
+        })
+        .select()
+        .single();
+
+      if (clinicError) throw clinicError;
+      if (!clinicData) throw new Error('Failed to create clinic');
+
       // Create user account
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: subAdminFormData.email,
@@ -140,7 +152,7 @@ export default function Clinics() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({ 
-          clinic_id: subAdminFormData.clinicId,
+          clinic_id: clinicData.id,
           phone: subAdminFormData.phone,
           status: subAdminFormData.status,
         })
@@ -153,23 +165,23 @@ export default function Clinics() {
         .from('clinic_employees')
         .insert({
           user_id: authData.user.id,
-          clinic_id: subAdminFormData.clinicId,
+          clinic_id: clinicData.id,
         });
 
       if (assignError) throw assignError;
 
       toast({
         title: "Success",
-        description: "Sub Admin account created successfully",
+        description: "Clinic created successfully",
       });
 
       setIsAddSubAdminDialogOpen(false);
-      setSubAdminFormData({ fullName: "", email: "", phone: "", password: "", clinicId: "", status: "active" });
+      setSubAdminFormData({ clinicName: "", fullName: "", email: "", phone: "", password: "", status: "active" });
       fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message || "Failed to add sub admin",
+        description: error.message || "Failed to create clinic",
         variant: "destructive",
       });
     } finally {
@@ -188,14 +200,14 @@ export default function Clinics() {
       phone: clinic.sub_admin.phone,
       status: clinic.sub_admin.status,
     });
-    setSubAdminFormData({
-      fullName: clinic.sub_admin.full_name,
-      email: clinic.sub_admin.email,
-      phone: clinic.sub_admin.phone,
-      password: "",
-      clinicId: clinic.id,
-      status: clinic.sub_admin.status,
-    });
+      setSubAdminFormData({
+        clinicName: "",
+        fullName: clinic.sub_admin.full_name,
+        email: clinic.sub_admin.email,
+        phone: clinic.sub_admin.phone,
+        password: "",
+        status: clinic.sub_admin.status,
+      });
     setIsEditSubAdminDialogOpen(true);
   };
 
@@ -231,7 +243,7 @@ export default function Clinics() {
 
       setIsEditSubAdminDialogOpen(false);
       setEditingSubAdmin(null);
-      setSubAdminFormData({ fullName: "", email: "", phone: "", password: "", clinicId: "", status: "active" });
+      setSubAdminFormData({ clinicName: "", fullName: "", email: "", phone: "", password: "", status: "active" });
       fetchClinics();
     } catch (error: any) {
       toast({
@@ -314,15 +326,24 @@ export default function Clinics() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Create Sub Admin
+              Create Clinic
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Create New Sub Admin</DialogTitle>
-              <DialogDescription>Create a sub admin account with login credentials to share</DialogDescription>
+              <DialogTitle>Create New Clinic</DialogTitle>
+              <DialogDescription>Create a clinic and its administrator account</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
+              <div>
+                <Label htmlFor="clinicName">Clinic Name *</Label>
+                <Input
+                  id="clinicName"
+                  value={subAdminFormData.clinicName}
+                  onChange={(e) => setSubAdminFormData({ ...subAdminFormData, clinicName: e.target.value })}
+                  placeholder="Medical Center ABC"
+                />
+              </div>
               <div>
                 <Label htmlFor="fullName">Full Name *</Label>
                 <Input
@@ -363,24 +384,6 @@ export default function Clinics() {
                 />
               </div>
               <div>
-                <Label htmlFor="clinic">Assign to Clinic *</Label>
-                <Select
-                  value={subAdminFormData.clinicId}
-                  onValueChange={(value) => setSubAdminFormData({ ...subAdminFormData, clinicId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select clinic" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clinics.map((clinic) => (
-                      <SelectItem key={clinic.id} value={clinic.id}>
-                        {clinic.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
                 <Label htmlFor="status">Account Status *</Label>
                 <Select
                   value={subAdminFormData.status}
@@ -399,7 +402,7 @@ export default function Clinics() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setIsAddSubAdminDialogOpen(false)}>Cancel</Button>
               <Button onClick={handleAddSubAdmin} disabled={loading}>
-                {loading ? 'Creating...' : 'Create Sub Admin Account'}
+                {loading ? 'Creating...' : 'Create Clinic'}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -424,9 +427,9 @@ export default function Clinics() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Clinic Name</TableHead>
-                    <TableHead>Sub Admin Name</TableHead>
-                    <TableHead>Email</TableHead>
+              <TableHead>Clinic Name</TableHead>
+              <TableHead>Person Name</TableHead>
+              <TableHead>Email</TableHead>
                     <TableHead>Phone</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
@@ -635,7 +638,7 @@ export default function Clinics() {
               <Label htmlFor="edit_clinic">Assigned Clinic</Label>
               <Input
                 id="edit_clinic"
-                value={clinics.find(c => c.id === subAdminFormData.clinicId)?.name || ''}
+                value={clinics.find(c => c.id === editingSubAdmin?.clinic_id)?.name || ''}
                 disabled
                 className="bg-muted"
               />
