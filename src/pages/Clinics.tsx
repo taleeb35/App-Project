@@ -201,19 +201,24 @@ export default function Clinics() {
       status: clinic.sub_admin.status,
     });
       setSubAdminFormData({
-        clinicName: "",
-        fullName: clinic.sub_admin.full_name,
-        email: clinic.sub_admin.email,
-        phone: clinic.sub_admin.phone,
+        clinicName: clinic.name,
+        fullName: clinic.sub_admin.full_name || "",
+        email: clinic.sub_admin.email || "",
+        phone: clinic.sub_admin.phone || "",
         password: "",
-        status: clinic.sub_admin.status,
+        status: clinic.sub_admin.status || "active",
       });
     setIsEditSubAdminDialogOpen(true);
   };
 
   const handleUpdateSubAdmin = async () => {
     if (!editingSubAdmin) return;
-    if (!subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone) {
+    if (
+      !subAdminFormData.clinicName?.trim() ||
+      !subAdminFormData.fullName?.trim() ||
+      !subAdminFormData.email?.trim() ||
+      !subAdminFormData.phone?.trim()
+    ) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
@@ -229,12 +234,21 @@ export default function Clinics() {
         .from('profiles')
         .update({ 
           full_name: subAdminFormData.fullName,
+          email: subAdminFormData.email,
           phone: subAdminFormData.phone,
           status: subAdminFormData.status,
         })
         .eq('id', editingSubAdmin.user_id);
 
       if (profileError) throw profileError;
+
+      // Update clinic name
+      const { error: clinicUpdateError } = await supabase
+        .from('clinics')
+        .update({ name: subAdminFormData.clinicName })
+        .eq('id', editingSubAdmin.clinic_id);
+
+      if (clinicUpdateError) throw clinicUpdateError;
 
       toast({
         title: "Success",
@@ -381,6 +395,7 @@ export default function Clinics() {
                   value={subAdminFormData.password}
                   onChange={(e) => setSubAdminFormData({ ...subAdminFormData, password: e.target.value })}
                   placeholder="Create a secure password"
+                  autoComplete="new-password"
                 />
               </div>
               <div>
@@ -605,6 +620,15 @@ export default function Clinics() {
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
+              <Label htmlFor="edit_clinicName">Clinic Name *</Label>
+              <Input
+                id="edit_clinicName"
+                value={subAdminFormData.clinicName}
+                onChange={(e) => setSubAdminFormData({ ...subAdminFormData, clinicName: e.target.value })}
+                placeholder="Medical Center ABC"
+              />
+            </div>
+            <div>
               <Label htmlFor="edit_fullName">Person Name *</Label>
               <Input
                 id="edit_fullName"
@@ -619,10 +643,9 @@ export default function Clinics() {
                 id="edit_email"
                 type="email"
                 value={subAdminFormData.email}
-                disabled
-                className="bg-muted"
+                onChange={(e) => setSubAdminFormData({ ...subAdminFormData, email: e.target.value })}
+                placeholder="admin@example.com"
               />
-              <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
             </div>
             <div>
               <Label htmlFor="edit_phone">Phone Number *</Label>

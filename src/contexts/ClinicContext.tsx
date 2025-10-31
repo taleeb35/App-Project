@@ -43,9 +43,8 @@ export function ClinicProvider({ children }: { children: ReactNode }) {
       
       setClinics((data as any) || []);
       
-      // Auto-select first clinic if none selected
       if (data && data.length > 0 && !selectedClinic) {
-        setSelectedClinic(data[0] as any);
+        setSelectedClinic({ ...(data[0] as any) });
       }
     } catch (error: any) {
       toast({
