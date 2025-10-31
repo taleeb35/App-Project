@@ -15,28 +15,34 @@ import { useToast } from "@/hooks/use-toast";
 type Clinic = {
   id: string;
   name: string;
-  license_number: string | null;
   phone: string | null;
   email: string | null;
-  address: string | null;
   created_at: string;
+  sub_admin?: {
+    user_id: string;
+    full_name: string;
+    email: string;
+    phone: string;
+    status: string;
+  } | null;
 };
 
 export default function Clinics() {
   const { toast } = useToast();
   const [clinics, setClinics] = useState<Clinic[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editingClinic, setEditingClinic] = useState<Clinic | null>(null);
+  const [isAddSubAdminDialogOpen, setIsAddSubAdminDialogOpen] = useState(false);
+  const [isEditSubAdminDialogOpen, setIsEditSubAdminDialogOpen] = useState(false);
+  const [editingSubAdmin, setEditingSubAdmin] = useState<{ user_id: string; clinic_id: string; full_name: string; email: string; phone: string; status: string } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
-  const [formData, setFormData] = useState({
-    name: "",
-    license_number: "",
-    phone: "",
+  const [subAdminFormData, setSubAdminFormData] = useState({
+    fullName: "",
     email: "",
-    address: "",
+    phone: "",
+    password: "",
+    clinicId: "",
+    status: "active",
   });
 
   useEffect(() => {
@@ -45,13 +51,53 @@ export default function Clinics() {
 
   const fetchClinics = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch clinics
+      const { data: clinicsData, error: clinicsError } = await supabase
         .from('clinics')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setClinics((data as any) || []);
+      if (clinicsError) throw clinicsError;
+
+      // Fetch all employees (sub admins)
+      const { data: employeesData, error: employeesError } = await supabase
+        .from('clinic_employees')
+        .select(`
+          user_id,
+          clinic_id,
+          clinics!clinic_employees_clinic_id_fkey (id, name)
+        `);
+
+      if (employeesError) throw employeesError;
+
+      // Get profiles for all employees
+      const userIds = employeesData?.map((emp: any) => emp.user_id) || [];
+      const { data: profilesData, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, email, full_name, phone, status')
+        .in('id', userIds);
+
+      if (profilesError) throw profilesError;
+
+      // Map sub admins to clinics
+      const profilesMap = new Map(profilesData?.map((p: any) => [p.id, p]) || []);
+      const clinicsWithSubAdmins = (clinicsData || []).map((clinic: any) => {
+        const employee = employeesData?.find((emp: any) => emp.clinic_id === clinic.id);
+        const profile = employee ? profilesMap.get(employee.user_id) : null;
+        
+        return {
+          ...clinic,
+          sub_admin: profile ? {
+            user_id: employee.user_id,
+            full_name: profile.full_name || '',
+            email: profile.email || '',
+            phone: profile.phone || '',
+            status: profile.status || 'active',
+          } : null
+        };
+      });
+
+      setClinics(clinicsWithSubAdmins);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -63,121 +109,196 @@ export default function Clinics() {
     }
   };
 
-  const handleAddClinic = async () => {
-    if (!formData.name) {
+  const handleAddSubAdmin = async () => {
+    if (!subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone || !subAdminFormData.password || !subAdminFormData.clinicId) {
       toast({
         title: "Error",
-        description: "Clinic name is required",
+        description: "Please fill all required fields",
         variant: "destructive",
       });
       return;
     }
 
+    setLoading(true);
     try {
-      const { error } = await supabase.from('clinics').insert(formData as any);
+      // Create user account
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: subAdminFormData.email,
+        password: subAdminFormData.password,
+        options: {
+          data: {
+            full_name: subAdminFormData.fullName,
+          },
+          emailRedirectTo: `${window.location.origin}/`,
+        },
+      });
 
-      if (error) throw error;
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // Update profile with phone and status
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          clinic_id: subAdminFormData.clinicId,
+          phone: subAdminFormData.phone,
+          status: subAdminFormData.status,
+        })
+        .eq('id', authData.user.id);
+
+      if (profileError) throw profileError;
+
+      // Create clinic employee assignment
+      const { error: assignError } = await supabase
+        .from('clinic_employees')
+        .insert({
+          user_id: authData.user.id,
+          clinic_id: subAdminFormData.clinicId,
+        });
+
+      if (assignError) throw assignError;
 
       toast({
         title: "Success",
-        description: "Clinic added successfully",
+        description: "Sub Admin account created successfully",
       });
 
-      setIsAddDialogOpen(false);
-      setFormData({
-        name: "",
-        license_number: "",
-        phone: "",
-        email: "",
-        address: "",
-      });
+      setIsAddSubAdminDialogOpen(false);
+      setSubAdminFormData({ fullName: "", email: "", phone: "", password: "", clinicId: "", status: "active" });
       fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to add sub admin",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEditClinic = (clinic: Clinic) => {
-    setEditingClinic(clinic);
-    setFormData({
-      name: clinic.name,
-      license_number: clinic.license_number || "",
-      phone: clinic.phone || "",
-      email: clinic.email || "",
-      address: clinic.address || "",
+  const handleEditSubAdmin = (clinic: Clinic) => {
+    if (!clinic.sub_admin) return;
+    
+    setEditingSubAdmin({
+      user_id: clinic.sub_admin.user_id,
+      clinic_id: clinic.id,
+      full_name: clinic.sub_admin.full_name,
+      email: clinic.sub_admin.email,
+      phone: clinic.sub_admin.phone,
+      status: clinic.sub_admin.status,
     });
-    setIsEditDialogOpen(true);
+    setSubAdminFormData({
+      fullName: clinic.sub_admin.full_name,
+      email: clinic.sub_admin.email,
+      phone: clinic.sub_admin.phone,
+      password: "",
+      clinicId: clinic.id,
+      status: clinic.sub_admin.status,
+    });
+    setIsEditSubAdminDialogOpen(true);
   };
 
-  const handleUpdateClinic = async () => {
-    if (!editingClinic) return;
-    if (!formData.name) {
+  const handleUpdateSubAdmin = async () => {
+    if (!editingSubAdmin) return;
+    if (!subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone) {
       toast({
         title: "Error",
-        description: "Clinic name is required",
+        description: "Please fill all required fields",
         variant: "destructive",
       });
       return;
     }
 
+    setLoading(true);
     try {
-      const { error } = await supabase
-        .from('clinics')
-        .update(formData)
-        .eq('id', editingClinic.id);
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          full_name: subAdminFormData.fullName,
+          phone: subAdminFormData.phone,
+          status: subAdminFormData.status,
+        })
+        .eq('id', editingSubAdmin.user_id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       toast({
         title: "Success",
-        description: "Clinic updated successfully",
+        description: "Sub Admin updated successfully",
       });
 
-      setIsEditDialogOpen(false);
-      setEditingClinic(null);
-      setFormData({
-        name: "",
-        license_number: "",
-        phone: "",
-        email: "",
-        address: "",
-      });
+      setIsEditSubAdminDialogOpen(false);
+      setEditingSubAdmin(null);
+      setSubAdminFormData({ fullName: "", email: "", phone: "", password: "", clinicId: "", status: "active" });
       fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update sub admin",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteClinic = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this clinic? This will affect associated vendors and patients.")) return;
+  const handleDeleteSubAdmin = async (userId: string, clinicId: string) => {
+    if (!confirm("Are you sure you want to remove this sub admin?")) return;
 
+    setLoading(true);
+    try {
+      // Delete clinic employee assignment
+      const { error: assignError } = await supabase
+        .from('clinic_employees')
+        .delete()
+        .eq('user_id', userId)
+        .eq('clinic_id', clinicId);
+
+      if (assignError) throw assignError;
+
+      toast({
+        title: "Success",
+        description: "Sub admin removed successfully",
+      });
+
+      fetchClinics();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove sub admin",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (userId: string, newStatus: string) => {
+    setLoading(true);
     try {
       const { error } = await supabase
-        .from('clinics')
-        .delete()
-        .eq('id', id);
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', userId);
 
       if (error) throw error;
 
       toast({
         title: "Success",
-        description: "Clinic deleted successfully",
+        description: `Status updated to ${newStatus}`,
       });
+
       fetchClinics();
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to update status",
         variant: "destructive",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,72 +307,100 @@ export default function Clinics() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Clinic Management</h1>
-          <p className="text-muted-foreground">Manage multiple clinic locations</p>
+          <p className="text-muted-foreground">Manage clinic locations and their sub admins</p>
         </div>
         
-        <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+        <Dialog open={isAddSubAdminDialogOpen} onOpenChange={setIsAddSubAdminDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Add New Clinic
+              Create Sub Admin
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add New Clinic</DialogTitle>
-              <DialogDescription>Add a new clinic location to the system</DialogDescription>
+              <DialogTitle>Create New Sub Admin</DialogTitle>
+              <DialogDescription>Create a sub admin account with login credentials to share</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 pt-4">
               <div>
-                <Label htmlFor="name">Clinic Name *</Label>
+                <Label htmlFor="fullName">Full Name *</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter clinic name"
+                  id="fullName"
+                  value={subAdminFormData.fullName}
+                  onChange={(e) => setSubAdminFormData({ ...subAdminFormData, fullName: e.target.value })}
+                  placeholder="John Doe"
                 />
               </div>
               <div>
-                <Label htmlFor="license_number">License Number</Label>
-                <Input
-                  id="license_number"
-                  value={formData.license_number}
-                  onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
-                  placeholder="License #"
-                />
-              </div>
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  placeholder="(555) 123-4567"
-                />
-              </div>
-              <div>
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">Email *</Label>
                 <Input
                   id="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="contact@clinic.com"
+                  value={subAdminFormData.email}
+                  onChange={(e) => setSubAdminFormData({ ...subAdminFormData, email: e.target.value })}
+                  placeholder="admin@example.com"
                 />
               </div>
               <div>
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="phone">Phone Number *</Label>
                 <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  placeholder="Full address"
+                  id="phone"
+                  type="tel"
+                  value={subAdminFormData.phone}
+                  onChange={(e) => setSubAdminFormData({ ...subAdminFormData, phone: e.target.value })}
+                  placeholder="+1 (555) 123-4567"
                 />
+              </div>
+              <div>
+                <Label htmlFor="password">Set Password *</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={subAdminFormData.password}
+                  onChange={(e) => setSubAdminFormData({ ...subAdminFormData, password: e.target.value })}
+                  placeholder="Create a secure password"
+                />
+              </div>
+              <div>
+                <Label htmlFor="clinic">Assign to Clinic *</Label>
+                <Select
+                  value={subAdminFormData.clinicId}
+                  onValueChange={(value) => setSubAdminFormData({ ...subAdminFormData, clinicId: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select clinic" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clinics.map((clinic) => (
+                      <SelectItem key={clinic.id} value={clinic.id}>
+                        {clinic.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="status">Account Status *</Label>
+                <Select
+                  value={subAdminFormData.status}
+                  onValueChange={(value) => setSubAdminFormData({ ...subAdminFormData, status: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active (Can Login)</SelectItem>
+                    <SelectItem value="draft">Draft (Cannot Login)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-              <Button onClick={handleAddClinic}>Add Clinic</Button>
+              <Button variant="outline" onClick={() => setIsAddSubAdminDialogOpen(false)}>Cancel</Button>
+              <Button onClick={handleAddSubAdmin} disabled={loading}>
+                {loading ? 'Creating...' : 'Create Sub Admin Account'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -276,10 +425,10 @@ export default function Clinics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Clinic Name</TableHead>
-                    <TableHead>License #</TableHead>
-                    <TableHead>Phone</TableHead>
+                    <TableHead>Sub Admin Name</TableHead>
                     <TableHead>Email</TableHead>
-                    <TableHead>Address</TableHead>
+                    <TableHead>Phone</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead>Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -287,7 +436,7 @@ export default function Clinics() {
                   {clinics.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        No clinics found. Add your first clinic to get started.
+                        No clinics found. Add your first sub admin to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -297,34 +446,57 @@ export default function Clinics() {
                           <p className="font-medium text-foreground">{clinic.name}</p>
                         </TableCell>
                         <TableCell>
-                          <code className="text-sm bg-muted px-2 py-1 rounded">{clinic.license_number || 'N/A'}</code>
+                          <p className="text-sm">{clinic.sub_admin?.full_name || 'N/A'}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{clinic.phone || 'N/A'}</p>
+                          <p className="text-sm">{clinic.sub_admin?.email || 'N/A'}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{clinic.email || 'N/A'}</p>
+                          <p className="text-sm">{clinic.sub_admin?.phone || 'N/A'}</p>
                         </TableCell>
                         <TableCell>
-                          <p className="text-sm">{clinic.address || 'N/A'}</p>
+                          {clinic.sub_admin ? (
+                            <Select
+                              value={clinic.sub_admin.status}
+                              onValueChange={(value) => handleUpdateStatus(clinic.sub_admin!.user_id, value)}
+                            >
+                              <SelectTrigger className="w-[140px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="active">
+                                  <Badge variant="default" className="w-full">Active</Badge>
+                                </SelectItem>
+                                <SelectItem value="draft">
+                                  <Badge variant="secondary" className="w-full">Draft</Badge>
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">N/A</span>
+                          )}
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleEditClinic(clinic)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => handleDeleteClinic(clinic.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            {clinic.sub_admin && (
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm"
+                                  onClick={() => handleEditSubAdmin(clinic)}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-destructive hover:text-destructive"
+                                  onClick={() => handleDeleteSubAdmin(clinic.sub_admin!.user_id, clinic.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -421,64 +593,75 @@ export default function Clinics() {
         </CardContent>
       </Card>
 
-      {/* Edit Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+      {/* Edit Sub Admin Dialog */}
+      <Dialog open={isEditSubAdminDialogOpen} onOpenChange={setIsEditSubAdminDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Clinic</DialogTitle>
-            <DialogDescription>Update clinic information</DialogDescription>
+            <DialogTitle>Edit Sub Admin</DialogTitle>
+            <DialogDescription>Update sub admin information</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
             <div>
-              <Label htmlFor="edit_name">Clinic Name *</Label>
+              <Label htmlFor="edit_fullName">Full Name *</Label>
               <Input
-                id="edit_name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="Enter clinic name"
+                id="edit_fullName"
+                value={subAdminFormData.fullName}
+                onChange={(e) => setSubAdminFormData({ ...subAdminFormData, fullName: e.target.value })}
+                placeholder="John Doe"
               />
             </div>
             <div>
-              <Label htmlFor="edit_license_number">License Number</Label>
-              <Input
-                id="edit_license_number"
-                value={formData.license_number}
-                onChange={(e) => setFormData({ ...formData, license_number: e.target.value })}
-                placeholder="License #"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_phone">Phone</Label>
-              <Input
-                id="edit_phone"
-                value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="(555) 123-4567"
-              />
-            </div>
-            <div>
-              <Label htmlFor="edit_email">Email</Label>
+              <Label htmlFor="edit_email">Email *</Label>
               <Input
                 id="edit_email"
                 type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="contact@clinic.com"
+                value={subAdminFormData.email}
+                disabled
+                className="bg-muted"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
+            </div>
+            <div>
+              <Label htmlFor="edit_phone">Phone Number *</Label>
+              <Input
+                id="edit_phone"
+                type="tel"
+                value={subAdminFormData.phone}
+                onChange={(e) => setSubAdminFormData({ ...subAdminFormData, phone: e.target.value })}
+                placeholder="+1 (555) 123-4567"
               />
             </div>
             <div>
-              <Label htmlFor="edit_address">Address</Label>
+              <Label htmlFor="edit_clinic">Assigned Clinic</Label>
               <Input
-                id="edit_address"
-                value={formData.address}
-                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Full address"
+                id="edit_clinic"
+                value={clinics.find(c => c.id === subAdminFormData.clinicId)?.name || ''}
+                disabled
+                className="bg-muted"
               />
+              <p className="text-xs text-muted-foreground mt-1">Clinic assignment cannot be changed</p>
+            </div>
+            <div>
+              <Label htmlFor="edit_status">Account Status *</Label>
+              <Select
+                value={subAdminFormData.status}
+                onValueChange={(value) => setSubAdminFormData({ ...subAdminFormData, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active (Can Login)</SelectItem>
+                  <SelectItem value="draft">Draft (Cannot Login)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdateClinic}>Update Clinic</Button>
+            <Button variant="outline" onClick={() => setIsEditSubAdminDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleUpdateSubAdmin} disabled={loading}>
+              {loading ? 'Updating...' : 'Update Sub Admin'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
