@@ -162,16 +162,15 @@ export default function Clinics() {
   };
 
   const handleEditSubAdmin = (clinic: Clinic) => {
-    if (!clinic.sub_admin) return;
-    
-    setEditingSubAdmin({
-      user_id: clinic.sub_admin.user_id,
-      clinic_id: clinic.id,
-      full_name: clinic.sub_admin.full_name,
-      email: clinic.sub_admin.email,
-      phone: clinic.sub_admin.phone,
-      status: clinic.sub_admin.status,
-    });
+    if (clinic.sub_admin) {
+      setEditingSubAdmin({
+        user_id: clinic.sub_admin.user_id,
+        clinic_id: clinic.id,
+        full_name: clinic.sub_admin.full_name,
+        email: clinic.sub_admin.email,
+        phone: clinic.sub_admin.phone,
+        status: clinic.sub_admin.status,
+      });
       setSubAdminFormData({
         clinicName: clinic.name,
         fullName: clinic.sub_admin.full_name || "",
@@ -180,6 +179,24 @@ export default function Clinics() {
         password: "",
         status: clinic.sub_admin.status || "active",
       });
+    } else {
+      setEditingSubAdmin({
+        user_id: "",
+        clinic_id: clinic.id,
+        full_name: "",
+        email: "",
+        phone: "",
+        status: "active",
+      });
+      setSubAdminFormData({
+        clinicName: clinic.name,
+        fullName: "",
+        email: "",
+        phone: "",
+        password: "",
+        status: "active",
+      });
+    }
     setIsEditSubAdminDialogOpen(true);
   };
 
@@ -468,24 +485,22 @@ export default function Clinics() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleEditSubAdmin(clinic)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                             {clinic.sub_admin && (
-                              <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm"
-                                  onClick={() => handleEditSubAdmin(clinic)}
-                                >
-                                  <Edit className="h-4 w-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => handleDeleteSubAdmin(clinic.sub_admin!.user_id, clinic.id)}
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="text-destructive hover:text-destructive"
+                                onClick={() => handleDeleteSubAdmin(clinic.sub_admin!.user_id, clinic.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             )}
                           </div>
                         </TableCell>
