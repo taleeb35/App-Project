@@ -1,1 +1,7 @@
 project_id = "jfgcwwlorwvdthadjtye"
+
+[functions.create-clinic]
+verify_jwt = false
+
+[functions.update-clinic]
+verify_jwt = false

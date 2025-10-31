@@ -12,11 +12,17 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log('Received body:', JSON.stringify(body, null, 2));
+    
     const { clinicId, userId, clinicName, fullName, email, phone, status } = body ?? {};
 
-    if (!clinicId || !userId || !clinicName || !fullName || !email || !phone || !status) {
+    console.log('Extracted fields:', { clinicId, userId, clinicName, fullName, email, phone, status });
+
+    // Validate minimally: clinicId and clinicName are required
+    if (!clinicId || !clinicName?.trim()) {
+      console.log('Missing clinicId or clinicName');
       return new Response(
-        JSON.stringify({ error: 'Missing required fields' }),
+        JSON.stringify({ error: 'Missing required fields: clinicId and clinicName are required' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
       );
     }
@@ -37,13 +43,21 @@ Deno.serve(async (req) => {
 
     if (clinicError) throw clinicError;
 
-    // Update profile
-    const { error: profileError } = await supabaseClient
-      .from('profiles')
-      .update({ full_name: fullName, email, phone, status })
-      .eq('id', userId);
+    // Conditionally update profile if userId and any user fields provided
+    if (userId && (fullName?.trim() || email?.trim() || phone?.trim() || status)) {
+      const updates: Record<string, string> = {};
+      if (fullName?.trim()) updates.full_name = fullName.trim();
+      if (email?.trim()) updates.email = email.trim();
+      if (phone?.trim()) updates.phone = phone.trim();
+      if (status) updates.status = status;
 
-    if (profileError) throw profileError;
+      const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .update(updates)
+        .eq('id', userId);
+
+      if (profileError) throw profileError;
+    }
 
     return new Response(
       JSON.stringify({ success: true }),

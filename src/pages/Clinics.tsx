@@ -196,17 +196,17 @@ export default function Clinics() {
 
   const handleUpdateSubAdmin = async () => {
     if (!editingSubAdmin) return;
-    if (
-      !subAdminFormData.clinicName?.trim() ||
+    const isAssigningNoAdmin = !editingSubAdmin.user_id;
+    if (!subAdminFormData.clinicName?.trim()) {
+      toast({ title: "Error", description: "Clinic name is required", variant: "destructive" });
+      return;
+    }
+    if (!isAssigningNoAdmin && (
       !subAdminFormData.fullName?.trim() ||
       !subAdminFormData.email?.trim() ||
       !subAdminFormData.phone?.trim()
-    ) {
-      toast({
-        title: "Error",
-        description: "Please fill all required fields",
-        variant: "destructive",
-      });
+    )) {
+      toast({ title: "Error", description: "Please fill all required fields", variant: "destructive" });
       return;
     }
 

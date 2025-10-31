@@ -12,9 +12,14 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json();
+    console.log('Received body:', JSON.stringify(body, null, 2));
+    
     const { clinicName, fullName, email, phone, password, status } = body ?? {};
 
-    if (!clinicName || !fullName || !email || !phone || !password || !status) {
+    console.log('Extracted fields:', { clinicName, fullName, email, phone, status, hasPassword: !!password });
+
+    if (!clinicName?.trim() || !fullName?.trim() || !email?.trim() || !phone?.trim() || !password || !status) {
+      console.log('Missing fields validation failed');
       return new Response(
         JSON.stringify({ error: 'Missing required fields' }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...corsHeaders } }
