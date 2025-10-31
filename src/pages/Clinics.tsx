@@ -110,7 +110,8 @@ export default function Clinics() {
   };
 
   const handleAddSubAdmin = async () => {
-    if (!subAdminFormData.clinicName || !subAdminFormData.fullName || !subAdminFormData.email || !subAdminFormData.phone || !subAdminFormData.password) {
+    const { clinicName, fullName, email, phone, password, status } = subAdminFormData;
+    if (!clinicName.trim() || !fullName.trim() || !email.trim() || !phone.trim() || !password) {
       toast({
         title: "Error",
         description: "Please fill all required fields",
@@ -121,54 +122,25 @@ export default function Clinics() {
 
     setLoading(true);
     try {
-      // Create clinic first
-      const { data: clinicData, error: clinicError } = await supabase
-        .from('clinics')
-        .insert({
-          name: subAdminFormData.clinicName,
-        })
-        .select()
-        .single();
-
-      if (clinicError) throw clinicError;
-      if (!clinicData) throw new Error('Failed to create clinic');
-
-      // Create user account
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: subAdminFormData.email,
-        password: subAdminFormData.password,
-        options: {
-          data: {
-            full_name: subAdminFormData.fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/`,
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-clinic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
         },
+        body: JSON.stringify({
+          clinicName: clinicName.trim(),
+          fullName: fullName.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          password,
+          status,
+        }),
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user');
-
-      // Update profile with phone and status
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          clinic_id: clinicData.id,
-          phone: subAdminFormData.phone,
-          status: subAdminFormData.status,
-        })
-        .eq('id', authData.user.id);
-
-      if (profileError) throw profileError;
-
-      // Create clinic employee assignment
-      const { error: assignError } = await supabase
-        .from('clinic_employees')
-        .insert({
-          user_id: authData.user.id,
-          clinic_id: clinicData.id,
-        });
-
-      if (assignError) throw assignError;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to create clinic');
 
       toast({
         title: "Success",
@@ -229,26 +201,26 @@ export default function Clinics() {
 
     setLoading(true);
     try {
-      // Update profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          full_name: subAdminFormData.fullName,
-          email: subAdminFormData.email,
-          phone: subAdminFormData.phone,
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-clinic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
+        },
+        body: JSON.stringify({
+          clinicId: editingSubAdmin.clinic_id,
+          userId: editingSubAdmin.user_id,
+          clinicName: subAdminFormData.clinicName.trim(),
+          fullName: subAdminFormData.fullName.trim(),
+          email: subAdminFormData.email.trim(),
+          phone: subAdminFormData.phone.trim(),
           status: subAdminFormData.status,
-        })
-        .eq('id', editingSubAdmin.user_id);
+        }),
+      });
 
-      if (profileError) throw profileError;
-
-      // Update clinic name
-      const { error: clinicUpdateError } = await supabase
-        .from('clinics')
-        .update({ name: subAdminFormData.clinicName })
-        .eq('id', editingSubAdmin.clinic_id);
-
-      if (clinicUpdateError) throw clinicUpdateError;
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update clinic');
 
       toast({
         title: "Success",
