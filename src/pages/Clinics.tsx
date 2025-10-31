@@ -122,29 +122,23 @@ export default function Clinics() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-clinic`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('create-clinic', {
+        body: {
           clinicName: clinicName.trim(),
           fullName: fullName.trim(),
           email: email.trim(),
           phone: phone.trim(),
           password,
           status,
-        }),
+        },
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to create clinic');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Success",
-        description: "Clinic created successfully",
+        description: "Clinic and administrator created successfully",
       });
 
       setIsAddSubAdminDialogOpen(false);
@@ -218,14 +212,8 @@ export default function Clinics() {
 
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-clinic`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('update-clinic', {
+        body: {
           clinicId: editingSubAdmin.clinic_id,
           userId: editingSubAdmin.user_id,
           clinicName: subAdminFormData.clinicName.trim(),
@@ -233,11 +221,11 @@ export default function Clinics() {
           email: subAdminFormData.email.trim(),
           phone: subAdminFormData.phone.trim(),
           status: subAdminFormData.status,
-        }),
+        },
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed to update clinic');
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Success",
