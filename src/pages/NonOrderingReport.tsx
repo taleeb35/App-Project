@@ -213,7 +213,7 @@ export default function NonOrderingReport() {
             <TableBody>
               {paginatedPatients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No patients found in this category
                   </TableCell>
                 </TableRow>
@@ -224,6 +224,7 @@ export default function NonOrderingReport() {
                     <TableCell className="font-medium">
                       {patient.first_name} {patient.last_name}
                     </TableCell>
+                    <TableCell>{patient.location_roster || <span className="text-muted-foreground">N/A</span>}</TableCell>
                     <TableCell>
                       {patient.email ? (
                         <a 
