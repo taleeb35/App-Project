@@ -551,6 +551,7 @@ export default function PatientDatabase() {
                   <TableRow>
                     <TableHead>Patient Name</TableHead>
                     <TableHead>K Number</TableHead>
+                    <TableHead>Roster/Location</TableHead>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Total Spent</TableHead>
