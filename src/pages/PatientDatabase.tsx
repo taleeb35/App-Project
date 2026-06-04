@@ -28,6 +28,7 @@ type Patient = {
   patient_type: string | null;
   preferred_vendor_id: string | null;
   clinic_id: string;
+  location_roster: string | null;
   created_at: string;
   vendors: { name: string } | null;
   associatedVendorIds?: string[];
@@ -86,6 +87,7 @@ export default function PatientDatabase() {
     patient_type: "Civilian",
     clinic_id: "",
     preferred_vendor_id: "",
+    location_roster: "",
   });
 
   useEffect(() => {
@@ -201,6 +203,7 @@ export default function PatientDatabase() {
         phone: formData.phone || null,
         email: formData.email || null,
         address: formData.address || null,
+        location_roster: formData.location_roster || null,
         preferred_vendor_id: formData.preferred_vendor_id || null,
         status: 'active',
       } as any);
@@ -209,7 +212,7 @@ export default function PatientDatabase() {
 
       toast({ title: "Success", description: "Patient added successfully" });
       setIsAddDialogOpen(false);
-      setFormData({ first_name: "", last_name: "", k_number: "", date_of_birth: "", phone: "", email: "", address: "", patient_type: "Civilian", clinic_id: selectedClinic?.id || "", preferred_vendor_id: "" });
+      setFormData({ first_name: "", last_name: "", k_number: "", date_of_birth: "", phone: "", email: "", address: "", patient_type: "Civilian", clinic_id: selectedClinic?.id || "", preferred_vendor_id: "", location_roster: "" });
       fetchPatientData();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -229,6 +232,7 @@ export default function PatientDatabase() {
       patient_type: patient.patient_type || "Civilian",
       clinic_id: patient.clinic_id,
       preferred_vendor_id: patient.preferred_vendor_id || "",
+      location_roster: patient.location_roster || "",
     });
     setIsEditDialogOpen(true);
   };
@@ -245,6 +249,7 @@ export default function PatientDatabase() {
           phone: formData.phone || null,
           email: formData.email || null,
           address: formData.address || null,
+          location_roster: formData.location_roster || null,
           preferred_vendor_id: formData.preferred_vendor_id || null,
         })
         .eq('id', editingPatient.id);
@@ -548,6 +553,7 @@ export default function PatientDatabase() {
                   <TableRow>
                     <TableHead>Patient Name</TableHead>
                     <TableHead>K Number</TableHead>
+                    <TableHead>Roster/Location</TableHead>
                     <TableHead>Vendor Name</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Total Spent</TableHead>
@@ -556,7 +562,7 @@ export default function PatientDatabase() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedPatients.length === 0 ? ( <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No patients found.</TableCell></TableRow> ) : (
+                  {paginatedPatients.length === 0 ? ( <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No patients found.</TableCell></TableRow> ) : (
                     paginatedPatients.map((patient) => (
                       <TableRow key={patient.id}>
                         <TableCell>
@@ -566,6 +572,7 @@ export default function PatientDatabase() {
                           </div>
                         </TableCell>
                         <TableCell><code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code></TableCell>
+                        <TableCell><p className="text-sm">{patient.location_roster || <span className="text-muted-foreground">N/A</span>}</p></TableCell>
                         <TableCell>
                           <p className="text-sm">
                             {(() => {
@@ -624,6 +631,7 @@ export default function PatientDatabase() {
             <div><Label htmlFor="edit_phone">Phone</Label><Input id="edit_phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
             <div><Label htmlFor="edit_email">Email</Label><Input id="edit_email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
             <div className="col-span-2"><Label htmlFor="edit_address">Address</Label><Input id="edit_address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
+            <div className="col-span-2"><Label htmlFor="edit_location_roster">Roster/Location</Label><Input id="edit_location_roster" value={formData.location_roster} onChange={(e) => setFormData({ ...formData, location_roster: e.target.value })} placeholder="e.g. Toronto Roster, North Clinic" /></div>
             <div><Label htmlFor="edit_clinic_id">Clinic *</Label>
               <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

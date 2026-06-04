@@ -18,6 +18,7 @@ interface MissingPatient {
   patient_type: string;
   email: string | null;
   phone: string | null;
+  location_roster: string | null;
 }
 
 interface Vendor {
@@ -115,7 +116,7 @@ export default function VendorReconciliationReport() {
       // Get full patient details for those associated with this vendor
       const { data: allVendorPatients, error: patientsError } = await supabase
         .from('patients')
-        .select('id, k_number, first_name, last_name, patient_type, email, phone')
+        .select('id, k_number, first_name, last_name, patient_type, email, phone, location_roster')
         .eq('clinic_id', selectedClinic.id)
         .eq('status', 'active')
         .in('id', vendorPatientIds);
@@ -315,6 +316,7 @@ export default function VendorReconciliationReport() {
                         <TableHead>K Number</TableHead>
                         <TableHead>Patient Name</TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Roster/Location</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
                       </TableRow>
@@ -335,6 +337,7 @@ export default function VendorReconciliationReport() {
                               {patient.patient_type}
                             </Badge>
                           </TableCell>
+                          <TableCell>{patient.location_roster || 'N/A'}</TableCell>
                           <TableCell>{patient.email || 'N/A'}</TableCell>
                           <TableCell>{patient.phone || 'N/A'}</TableCell>
                         </TableRow>

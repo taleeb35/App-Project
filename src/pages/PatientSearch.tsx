@@ -20,6 +20,7 @@ type Patient = {
   patient_type: string | null;
   preferred_vendor_id: string | null;
   vendor_id: string | null;
+  location_roster: string | null;
 };
 
 type Vendor = {
@@ -352,6 +353,13 @@ export default function PatientSearch() {
                       <div>
                         <p className="text-sm text-muted-foreground">Address</p>
                         <p className="font-medium">{patient.address || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Roster/Location</p>
+                        <p className="font-medium">{patient.location_roster || 'Not provided'}</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">

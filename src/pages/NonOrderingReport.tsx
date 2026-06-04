@@ -22,6 +22,7 @@ interface NonOrderingPatient {
   phone: string | null;
   patient_type: string;
   k_number: string;
+  location_roster: string | null;
   last_purchase_date: string | null;
   months_without_order: number;
 }
@@ -70,7 +71,7 @@ export default function NonOrderingReport() {
       // Get all patients from current clinic
       const { data: patients, error: patientsError } = await supabase
         .from("patients")
-        .select("id, first_name, last_name, email, phone, patient_type, k_number")
+        .select("id, first_name, last_name, email, phone, patient_type, k_number, location_roster")
         .eq("clinic_id", clinicId)
         .eq("status", "active");
 
@@ -202,6 +203,7 @@ export default function NonOrderingReport() {
               <TableRow>
                 <TableHead>K-Number</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Roster/Location</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Last Order</TableHead>
@@ -211,7 +213,7 @@ export default function NonOrderingReport() {
             <TableBody>
               {paginatedPatients.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     No patients found in this category
                   </TableCell>
                 </TableRow>
@@ -222,6 +224,7 @@ export default function NonOrderingReport() {
                     <TableCell className="font-medium">
                       {patient.first_name} {patient.last_name}
                     </TableCell>
+                    <TableCell>{patient.location_roster || <span className="text-muted-foreground">N/A</span>}</TableCell>
                     <TableCell>
                       {patient.email ? (
                         <a 
