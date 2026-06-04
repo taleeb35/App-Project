@@ -183,6 +183,11 @@ export default function UploadClinic() {
           const typeRaw = String(map['type'] ?? 'Veterans').trim();
           const isVeteran = typeRaw.toLowerCase() === 'veterans';
 
+          const locationRosterRaw = map['locationroster'] ?? map['location'] ?? map['roster'];
+          const locationRosterVal = locationRosterRaw !== undefined && locationRosterRaw !== null && String(locationRosterRaw).trim() !== ''
+            ? String(locationRosterRaw).trim()
+            : null;
+
           // Duplicate check by K Number within clinic
           const { data: existingPatients, error: checkError } = await (supabase as any)
             .from('patients')
