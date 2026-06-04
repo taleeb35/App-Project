@@ -272,6 +272,7 @@ export type Database = {
           is_veteran: boolean | null
           k_number: string
           last_name: string
+          location_roster: string | null
           patient_type: string
           phone: string | null
           preferred_vendor_id: string | null
@@ -292,6 +293,7 @@ export type Database = {
           is_veteran?: boolean | null
           k_number: string
           last_name: string
+          location_roster?: string | null
           patient_type?: string
           phone?: string | null
           preferred_vendor_id?: string | null
@@ -312,6 +314,7 @@ export type Database = {
           is_veteran?: boolean | null
           k_number?: string
           last_name?: string
+          location_roster?: string | null
           patient_type?: string
           phone?: string | null
           preferred_vendor_id?: string | null

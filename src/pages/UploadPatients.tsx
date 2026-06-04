@@ -193,9 +193,25 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const typeRaw = String(map['type'] ?? 'Veterans').trim();
           const isVeteran = typeRaw.toLowerCase() === 'veterans';
 
+          const locationRoster = (
+            map['locationroster'] ??
+            map['location'] ??
+            map['roster']
+          );
+          const locationRosterVal = locationRoster !== undefined && locationRoster !== null && String(locationRoster).trim() !== ''
+            ? String(locationRoster).trim()
+            : null;
+
           if (existingPatients && existingPatients.length > 0) {
             // Use existing patient; still process vendor mapping
             patientId = existingPatients[0].id;
+            // Update location/roster if provided
+            if (locationRosterVal) {
+              await (supabase as any)
+                .from('patients')
+                .update({ location_roster: locationRosterVal })
+                .eq('id', patientId);
+            }
             skippedCount++;
           } else {
             // Insert new patient
@@ -212,8 +228,10 @@ const normalizeRow = (row: Record<string, unknown>) => {
                   email,
                   status: patientStatus,
                   patient_type: isVeteran ? 'Veteran' : 'Civilian',
+                  location_roster: locationRosterVal,
                 } as any
               ])
+
               .select('id')
               .single();
             if (insertError) throw insertError;
@@ -382,6 +400,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
                 <li><strong>Vendors</strong> – Single vendor name or multiple vendors separated by commas (e.g., "Green Valley Dispensary, Healing Herbs Co.") (optional)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
+                <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
               <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
                 <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-2">
