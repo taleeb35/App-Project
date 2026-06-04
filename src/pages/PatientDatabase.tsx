@@ -560,7 +560,7 @@ export default function PatientDatabase() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {paginatedPatients.length === 0 ? ( <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">No patients found.</TableCell></TableRow> ) : (
+                  {paginatedPatients.length === 0 ? ( <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">No patients found.</TableCell></TableRow> ) : (
                     paginatedPatients.map((patient) => (
                       <TableRow key={patient.id}>
                         <TableCell>
@@ -570,6 +570,7 @@ export default function PatientDatabase() {
                           </div>
                         </TableCell>
                         <TableCell><code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code></TableCell>
+                        <TableCell><p className="text-sm">{patient.location_roster || <span className="text-muted-foreground">N/A</span>}</p></TableCell>
                         <TableCell>
                           <p className="text-sm">
                             {(() => {
