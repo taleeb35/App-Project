@@ -249,6 +249,7 @@ export default function PatientDatabase() {
           phone: formData.phone || null,
           email: formData.email || null,
           address: formData.address || null,
+          location_roster: formData.location_roster || null,
           preferred_vendor_id: formData.preferred_vendor_id || null,
         })
         .eq('id', editingPatient.id);
