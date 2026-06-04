@@ -22,6 +22,7 @@ interface NonOrderingPatient {
   phone: string | null;
   patient_type: string;
   k_number: string;
+  location_roster: string | null;
   last_purchase_date: string | null;
   months_without_order: number;
 }
