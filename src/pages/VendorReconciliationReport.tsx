@@ -316,6 +316,7 @@ export default function VendorReconciliationReport() {
                         <TableHead>K Number</TableHead>
                         <TableHead>Patient Name</TableHead>
                         <TableHead>Type</TableHead>
+                        <TableHead>Roster/Location</TableHead>
                         <TableHead>Email</TableHead>
                         <TableHead>Phone</TableHead>
                       </TableRow>
