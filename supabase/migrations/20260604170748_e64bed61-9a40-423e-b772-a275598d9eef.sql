@@ -1,0 +1,3 @@
+CREATE POLICY "Authenticated users can insert vendors" ON public.vendors FOR INSERT TO authenticated WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users can update vendors" ON public.vendors FOR UPDATE TO authenticated USING (auth.uid() IS NOT NULL) WITH CHECK (auth.uid() IS NOT NULL);
+CREATE POLICY "Authenticated users can delete vendors" ON public.vendors FOR DELETE TO authenticated USING (auth.uid() IS NOT NULL);
