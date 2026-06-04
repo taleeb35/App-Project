@@ -211,7 +211,7 @@ export default function PatientDatabase() {
 
       toast({ title: "Success", description: "Patient added successfully" });
       setIsAddDialogOpen(false);
-      setFormData({ first_name: "", last_name: "", k_number: "", date_of_birth: "", phone: "", email: "", address: "", patient_type: "Civilian", clinic_id: selectedClinic?.id || "", preferred_vendor_id: "" });
+      setFormData({ first_name: "", last_name: "", k_number: "", date_of_birth: "", phone: "", email: "", address: "", patient_type: "Civilian", clinic_id: selectedClinic?.id || "", preferred_vendor_id: "", location_roster: "" });
       fetchPatientData();
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
