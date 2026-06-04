@@ -273,8 +273,13 @@ export default function UploadClinic() {
           let patientId: string | null = null;
 
           if (existingPatients && existingPatients.length > 0) {
-            // Use existing patient and proceed to vendor mapping (do not treat as failure)
             patientId = existingPatients[0].id;
+            if (locationRosterVal) {
+              await (supabase as any)
+                .from('patients')
+                .update({ location_roster: locationRosterVal })
+                .eq('id', patientId);
+            }
           } else {
             // Insert new patient (set preferred vendor to first match when available)
             const { data: newPatient, error } = await (supabase as any)
