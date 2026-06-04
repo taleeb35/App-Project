@@ -356,6 +356,13 @@ export default function PatientSearch() {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
+                      <MapPin className="h-5 w-5 text-muted-foreground mt-0.5" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Roster/Location</p>
+                        <p className="font-medium">{patient.location_roster || 'Not provided'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
                       <Badge className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
                         <p className="text-sm text-muted-foreground">Status</p>
