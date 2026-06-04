@@ -193,9 +193,25 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const typeRaw = String(map['type'] ?? 'Veterans').trim();
           const isVeteran = typeRaw.toLowerCase() === 'veterans';
 
+          const locationRoster = (
+            map['locationroster'] ??
+            map['location'] ??
+            map['roster']
+          );
+          const locationRosterVal = locationRoster !== undefined && locationRoster !== null && String(locationRoster).trim() !== ''
+            ? String(locationRoster).trim()
+            : null;
+
           if (existingPatients && existingPatients.length > 0) {
             // Use existing patient; still process vendor mapping
             patientId = existingPatients[0].id;
+            // Update location/roster if provided
+            if (locationRosterVal) {
+              await (supabase as any)
+                .from('patients')
+                .update({ location_roster: locationRosterVal })
+                .eq('id', patientId);
+            }
             skippedCount++;
           } else {
             // Insert new patient
@@ -212,8 +228,10 @@ const normalizeRow = (row: Record<string, unknown>) => {
                   email,
                   status: patientStatus,
                   patient_type: isVeteran ? 'Veteran' : 'Civilian',
+                  location_roster: locationRosterVal,
                 } as any
               ])
+
               .select('id')
               .single();
             if (insertError) throw insertError;
