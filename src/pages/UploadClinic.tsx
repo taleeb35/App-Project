@@ -296,6 +296,7 @@ export default function UploadClinic() {
                 status: patientStatus,
                 patient_type: isVeteran ? 'Veteran' : 'Civilian',
                 preferred_vendor_id: vendorIds[0] || null,
+                location_roster: locationRosterVal,
               } as any)
               .select('id')
               .single();
