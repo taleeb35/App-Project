@@ -116,7 +116,7 @@ export default function VendorReconciliationReport() {
       // Get full patient details for those associated with this vendor
       const { data: allVendorPatients, error: patientsError } = await supabase
         .from('patients')
-        .select('id, k_number, first_name, last_name, patient_type, email, phone')
+        .select('id, k_number, first_name, last_name, patient_type, email, phone, location_roster')
         .eq('clinic_id', selectedClinic.id)
         .eq('status', 'active')
         .in('id', vendorPatientIds);
