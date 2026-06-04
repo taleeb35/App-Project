@@ -18,6 +18,7 @@ interface MissingPatient {
   patient_type: string;
   email: string | null;
   phone: string | null;
+  location_roster: string | null;
 }
 
 interface Vendor {
