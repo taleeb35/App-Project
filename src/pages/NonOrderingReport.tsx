@@ -203,6 +203,7 @@ export default function NonOrderingReport() {
               <TableRow>
                 <TableHead>K-Number</TableHead>
                 <TableHead>Name</TableHead>
+                <TableHead>Roster/Location</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
                 <TableHead>Last Order</TableHead>
