@@ -231,6 +231,7 @@ export default function PatientDatabase() {
       patient_type: patient.patient_type || "Civilian",
       clinic_id: patient.clinic_id,
       preferred_vendor_id: patient.preferred_vendor_id || "",
+      location_roster: patient.location_roster || "",
     });
     setIsEditDialogOpen(true);
   };
