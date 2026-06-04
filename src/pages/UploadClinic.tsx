@@ -183,6 +183,11 @@ export default function UploadClinic() {
           const typeRaw = String(map['type'] ?? 'Veterans').trim();
           const isVeteran = typeRaw.toLowerCase() === 'veterans';
 
+          const locationRosterRaw = map['locationroster'] ?? map['location'] ?? map['roster'];
+          const locationRosterVal = locationRosterRaw !== undefined && locationRosterRaw !== null && String(locationRosterRaw).trim() !== ''
+            ? String(locationRosterRaw).trim()
+            : null;
+
           // Duplicate check by K Number within clinic
           const { data: existingPatients, error: checkError } = await (supabase as any)
             .from('patients')
@@ -268,8 +273,13 @@ export default function UploadClinic() {
           let patientId: string | null = null;
 
           if (existingPatients && existingPatients.length > 0) {
-            // Use existing patient and proceed to vendor mapping (do not treat as failure)
             patientId = existingPatients[0].id;
+            if (locationRosterVal) {
+              await (supabase as any)
+                .from('patients')
+                .update({ location_roster: locationRosterVal })
+                .eq('id', patientId);
+            }
           } else {
             // Insert new patient (set preferred vendor to first match when available)
             const { data: newPatient, error } = await (supabase as any)
@@ -286,6 +296,7 @@ export default function UploadClinic() {
                 status: patientStatus,
                 patient_type: isVeteran ? 'Veteran' : 'Civilian',
                 preferred_vendor_id: vendorIds[0] || null,
+                location_roster: locationRosterVal,
               } as any)
               .select('id')
               .single();
@@ -428,6 +439,7 @@ export default function UploadClinic() {
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
                 <li><strong>Vendors</strong> – Single vendor or multiple vendors separated by commas (optional)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
+                <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
             </AlertDescription>
           </Alert>
