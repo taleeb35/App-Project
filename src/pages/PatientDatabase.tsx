@@ -28,6 +28,7 @@ type Patient = {
   patient_type: string | null;
   preferred_vendor_id: string | null;
   clinic_id: string;
+  location_roster: string | null;
   created_at: string;
   vendors: { name: string } | null;
   associatedVendorIds?: string[];
