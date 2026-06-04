@@ -629,6 +629,7 @@ export default function PatientDatabase() {
             <div><Label htmlFor="edit_phone">Phone</Label><Input id="edit_phone" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} /></div>
             <div><Label htmlFor="edit_email">Email</Label><Input id="edit_email" type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} /></div>
             <div className="col-span-2"><Label htmlFor="edit_address">Address</Label><Input id="edit_address" value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} /></div>
+            <div className="col-span-2"><Label htmlFor="edit_location_roster">Roster/Location</Label><Input id="edit_location_roster" value={formData.location_roster} onChange={(e) => setFormData({ ...formData, location_roster: e.target.value })} placeholder="e.g. Toronto Roster, North Clinic" /></div>
             <div><Label htmlFor="edit_clinic_id">Clinic *</Label>
               <Select value={formData.clinic_id} onValueChange={(value) => setFormData({ ...formData, clinic_id: value })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
