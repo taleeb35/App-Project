@@ -20,6 +20,7 @@ type Patient = {
   patient_type: string | null;
   preferred_vendor_id: string | null;
   vendor_id: string | null;
+  location_roster: string | null;
 };
 
 type Vendor = {
