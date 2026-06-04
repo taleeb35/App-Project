@@ -87,6 +87,7 @@ export default function PatientDatabase() {
     patient_type: "Civilian",
     clinic_id: "",
     preferred_vendor_id: "",
+    location_roster: "",
   });
 
   useEffect(() => {
