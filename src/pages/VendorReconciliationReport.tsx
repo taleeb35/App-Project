@@ -337,6 +337,7 @@ export default function VendorReconciliationReport() {
                               {patient.patient_type}
                             </Badge>
                           </TableCell>
+                          <TableCell>{patient.location_roster || 'N/A'}</TableCell>
                           <TableCell>{patient.email || 'N/A'}</TableCell>
                           <TableCell>{patient.phone || 'N/A'}</TableCell>
                         </TableRow>
