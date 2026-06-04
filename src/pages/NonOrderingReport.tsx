@@ -71,7 +71,7 @@ export default function NonOrderingReport() {
       // Get all patients from current clinic
       const { data: patients, error: patientsError } = await supabase
         .from("patients")
-        .select("id, first_name, last_name, email, phone, patient_type, k_number")
+        .select("id, first_name, last_name, email, phone, patient_type, k_number, location_roster")
         .eq("clinic_id", clinicId)
         .eq("status", "active");
 
