@@ -428,6 +428,7 @@ export default function UploadClinic() {
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
                 <li><strong>Vendors</strong> – Single vendor or multiple vendors separated by commas (optional)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
+                <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
             </AlertDescription>
           </Alert>
