@@ -415,6 +415,8 @@ export default function PatientDatabase() {
         (patient.associatedVendorIds && patient.associatedVendorIds.includes(vendorFilter));
       
       const matchesPatientType = patientTypeFilter === 'all_types' || patient.patient_type === patientTypeFilter;
+      const matchesLocation = locationFilter === 'all_locations' ||
+        (locationFilter === '__none__' ? !patient.location_roster : patient.location_roster === locationFilter);
       
       let matchesActivity = true;
       switch(activityFilter) {
@@ -431,9 +433,15 @@ export default function PatientDatabase() {
           matchesActivity = true;
       }
       
-      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesActivity;
+      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesLocation && matchesActivity;
     });
-  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter]);
+  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter, locationFilter]);
+
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
+    patients.forEach(p => { if (p.location_roster) set.add(p.location_roster); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [patients]);
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
