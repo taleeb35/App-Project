@@ -534,6 +534,17 @@ export default function PatientDatabase() {
               </Select>
             </div>
             <div>
+              <Label htmlFor="location_filter">Filter by Roster/Location</Label>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger id="location_filter"><SelectValue placeholder="All Locations" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_locations">All Locations</SelectItem>
+                  <SelectItem value="__none__">No Location Set</SelectItem>
+                  {locationOptions.map(loc => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
                <Label htmlFor="activity_filter">Filter by Activity</Label>
                 <Select value={activityFilter} onValueChange={setActivityFilter}>
                     <SelectTrigger id="activity_filter"><SelectValue /></SelectTrigger>
