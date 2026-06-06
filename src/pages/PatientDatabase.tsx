@@ -68,6 +68,7 @@ export default function PatientDatabase() {
   const [statusFilter, setStatusFilter] = useState("all_status");
   const [vendorFilter, setVendorFilter] = useState("all_vendors");
   const [patientTypeFilter, setPatientTypeFilter] = useState("all_types"); // New state for patient type filter
+  const [locationFilter, setLocationFilter] = useState("all_locations");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
