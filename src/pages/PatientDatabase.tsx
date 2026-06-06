@@ -68,6 +68,7 @@ export default function PatientDatabase() {
   const [statusFilter, setStatusFilter] = useState("all_status");
   const [vendorFilter, setVendorFilter] = useState("all_vendors");
   const [patientTypeFilter, setPatientTypeFilter] = useState("all_types"); // New state for patient type filter
+  const [locationFilter, setLocationFilter] = useState("all_locations");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
@@ -414,6 +415,8 @@ export default function PatientDatabase() {
         (patient.associatedVendorIds && patient.associatedVendorIds.includes(vendorFilter));
       
       const matchesPatientType = patientTypeFilter === 'all_types' || patient.patient_type === patientTypeFilter;
+      const matchesLocation = locationFilter === 'all_locations' ||
+        (locationFilter === '__none__' ? !patient.location_roster : patient.location_roster === locationFilter);
       
       let matchesActivity = true;
       switch(activityFilter) {
@@ -430,9 +433,15 @@ export default function PatientDatabase() {
           matchesActivity = true;
       }
       
-      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesActivity;
+      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesLocation && matchesActivity;
     });
-  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter]);
+  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter, locationFilter]);
+
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
+    patients.forEach(p => { if (p.location_roster) set.add(p.location_roster); });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [patients]);
 
   const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -521,6 +530,17 @@ export default function PatientDatabase() {
                 <SelectContent>
                   <SelectItem value="all_vendors">All Vendors</SelectItem>
                   {vendors.map(vendor => (<SelectItem key={vendor.id} value={vendor.id}>{vendor.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="location_filter">Filter by Roster/Location</Label>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger id="location_filter"><SelectValue placeholder="All Locations" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_locations">All Locations</SelectItem>
+                  <SelectItem value="__none__">No Location Set</SelectItem>
+                  {locationOptions.map(loc => (<SelectItem key={loc} value={loc}>{loc}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
