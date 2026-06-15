@@ -1,0 +1,2 @@
+UPDATE auth.users SET email = 'krysta@availcannabis.com' WHERE id = 'ab9616bc-5af6-453d-ae97-cecd5a1766be';
+UPDATE auth.users SET email = 'ceo@availcannabis.com' WHERE id = 'b766892f-4dcb-4a1b-a18b-e96eb0618b24';
