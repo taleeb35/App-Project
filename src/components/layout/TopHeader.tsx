@@ -1,6 +1,6 @@
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Settings, LogOut, Crown } from "lucide-react";
+import { LogOut, Crown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
