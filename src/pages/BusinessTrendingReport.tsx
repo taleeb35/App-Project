@@ -109,7 +109,7 @@ export default function BusinessTrendingReport() {
           .eq("clinic_id", selectedClinic.id),
         supabase
           .from("vendor_reports")
-          .select("patient_id, amount, grams_sold, report_month, product_name, vendor_id")
+          .select("patient_id, amount, our_fee, grams_sold, report_month, product_name, vendor_id")
           .eq("clinic_id", selectedClinic.id)
           .gte("report_month", format(start, "yyyy-MM-dd"))
           .lte("report_month", format(end, "yyyy-MM-dd")),
