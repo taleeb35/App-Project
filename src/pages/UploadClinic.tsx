@@ -364,7 +364,8 @@ export default function UploadClinic() {
                 <li><strong>Phone</strong> – Contact phone number (optional)</li>
                 <li><strong>Email</strong> – Email address (optional)</li>
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
-                <li><strong>Vendors</strong> – Single vendor or multiple vendors separated by commas (optional)</li>
+                <li><strong>Client ID 1</strong> / <strong>Vendor 1</strong>, <strong>Client ID 2</strong> / <strong>Vendor 2</strong>, … – Vendor name plus that vendor's unique Client ID for the patient; add as many numbered pairs as the sheet needs (optional)</li>
+                <li><strong>Vendors</strong> – Legacy alternative: single vendor or multiple vendors separated by commas (used only when no Client ID / Vendor pairs exist)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
                 <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
