@@ -334,6 +334,19 @@ export default function VendorReportUpload() {
           .eq('clinic_id', selectedClinic.id)
           .eq('report_month', monthStart);
         if (delError) throw delError;
+
+        // Guard against silent no-op deletes (permission issues) creating duplicates
+        const { count: leftover } = await supabase
+          .from('vendor_reports')
+          .select('id', { count: 'exact', head: true })
+          .eq('vendor_id', selectedVendor)
+          .eq('clinic_id', selectedClinic.id)
+          .eq('report_month', monthStart);
+        if ((leftover || 0) > 0) {
+          throw new Error(
+            'Existing records for this vendor and month could not be replaced. Nothing was saved — please contact support.'
+          );
+        }
       }
 
       // Aggregate per patient so one patient = one monthly record
