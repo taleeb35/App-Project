@@ -98,6 +98,7 @@ export default function UploadClinic() {
     }
 
     setIsUploading(true);
+    resetVendorCache();
     const errors: string[] = [];
     let successful = 0;
     let failed = 0;
