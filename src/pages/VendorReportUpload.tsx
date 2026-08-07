@@ -394,6 +394,7 @@ export default function VendorReportUpload() {
         linksCreated: newLinks.length,
         totalAmount: matched.reduce((s, m) => s + m.amount, 0),
         totalGrams: matched.reduce((s, m) => s + m.grams, 0),
+        totalFee: matched.reduce((s, m) => s + m.fee, 0),
         replaced,
       });
 
