@@ -149,7 +149,8 @@ export default function PatientDatabase() {
           ?.filter(pv => pv.patient_id === patient.id)
           .map(pv => ({
             id: pv.vendor_id,
-            name: (pv.vendors as any)?.name || 'Unknown'
+            name: (pv.vendors as any)?.name || 'Unknown',
+            client_id: (pv as any).client_id ?? null
           })) || [];
         
         return {
