@@ -8,6 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/layout/AdminLayout';
+import { extractVendorClientPairs, syncPatientVendorLinks } from '@/utils/vendorClientIds';
+
 
 interface PatientRow {
   // Lowercase/underscore variants
