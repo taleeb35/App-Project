@@ -559,7 +559,7 @@ export default function VendorReportUpload() {
                   : 'Fresh upload for this vendor & month'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">{result.matched.length}</p>
                 <p className="text-sm text-muted-foreground">Rows matched</p>
@@ -579,6 +579,10 @@ export default function VendorReportUpload() {
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">${result.totalAmount.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Total net sales</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-2xl font-bold">${result.totalFee.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total our fee</p>
               </div>
             </CardContent>
             {result.linksCreated > 0 && (
