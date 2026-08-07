@@ -1,0 +1,1 @@
+ALTER TABLE public.vendor_reports ADD COLUMN IF NOT EXISTS our_fee numeric NOT NULL DEFAULT 0;
