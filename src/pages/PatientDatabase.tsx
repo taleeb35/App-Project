@@ -596,19 +596,35 @@ export default function PatientDatabase() {
                         <TableCell><code className="text-sm bg-muted px-2 py-1 rounded">{patient.k_number}</code></TableCell>
                         <TableCell><p className="text-sm">{patient.location_roster || <span className="text-muted-foreground">N/A</span>}</p></TableCell>
                         <TableCell>
-                          <p className="text-sm">
-                            {(() => {
-                              // Show preferred vendor if set
-                              if (patient.vendors?.name) {
-                                return patient.vendors.name;
-                              }
-                              // Otherwise show associated vendors
-                              if (vendorFilter !== 'all_vendors') {
-                                return patient.associatedVendors?.find(v => v.id === vendorFilter)?.name || 'N/A';
-                              }
-                              return patient.associatedVendors?.map(v => v.name).join(', ') || 'N/A';
-                            })()}
-                          </p>
+                          {(() => {
+                            const all = patient.associatedVendors || [];
+                            const list = vendorFilter !== 'all_vendors'
+                              ? all.filter(v => v.id === vendorFilter)
+                              : all;
+
+                            if (list.length === 0) {
+                              return (
+                                <p className="text-sm">
+                                  {patient.vendors?.name || <span className="text-muted-foreground">N/A</span>}
+                                </p>
+                              );
+                            }
+
+                            return (
+                              <div className="space-y-0.5">
+                                {list.map(v => (
+                                  <p key={v.id} className="text-sm leading-tight">
+                                    {v.name}
+                                    {v.client_id && (
+                                      <span className="block text-xs text-muted-foreground font-mono">
+                                        Client ID: {v.client_id}
+                                      </span>
+                                    )}
+                                  </p>
+                                ))}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                         <TableCell>
                           <Select value={patient.status || ''} onValueChange={(newStatus) => handleStatusChange(patient.id, newStatus)}>
