@@ -293,6 +293,7 @@ export default function VendorReportView() {
                     <TableHead>Product</TableHead>
                     <TableHead>Grams</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Our Fee</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
