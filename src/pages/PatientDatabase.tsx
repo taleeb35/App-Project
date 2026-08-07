@@ -138,7 +138,8 @@ export default function PatientDatabase() {
       // Fetch patient-vendor associations with vendor details
       const { data: patientVendorData, error: pvError } = await supabase
         .from('patient_vendors')
-        .select('patient_id, vendor_id, vendors(id, name)');
+        .select('patient_id, vendor_id, client_id, vendors(id, name)');
+      
       
       if (pvError) throw pvError;
       
