@@ -627,6 +627,7 @@ export default function VendorReportUpload() {
                         <TableCell>{m.clientId || '—'}</TableCell>
                         <TableCell className="text-right">{m.grams}</TableCell>
                         <TableCell className="text-right">${m.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">${m.fee.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
