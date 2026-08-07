@@ -357,7 +357,8 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 <li><strong>Phone</strong> – Contact phone number (optional)</li>
                 <li><strong>Email</strong> – Email address (optional)</li>
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
-                <li><strong>Vendors</strong> – Single vendor name or multiple vendors separated by commas (e.g., "Green Valley Dispensary, Healing Herbs Co.") (optional)</li>
+                <li><strong>Client ID 1</strong> / <strong>Vendor 1</strong>, <strong>Client ID 2</strong> / <strong>Vendor 2</strong>, … – Vendor name plus the unique Client ID that vendor uses for this patient. Add as many numbered pairs as needed (optional)</li>
+                <li><strong>Vendors</strong> – Legacy alternative: single vendor name or multiple vendors separated by commas (optional, used only when no Client ID / Vendor pairs are present)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
                 <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
@@ -368,10 +369,13 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1 list-disc list-inside">
                   <li>Column names must match exactly as shown above</li>
                   <li>Name, DOB, and K Number are required fields</li>
-                  <li>For multiple vendors, separate names with commas in the Vendors column</li>
+                  <li>Each patient has a different Client ID with every vendor — keep each Client ID next to its own Vendor column</li>
+                  <li>Leave a Client ID / Vendor pair blank if the patient does not use that vendor</li>
+                  <li>Vendors that don't exist yet are created automatically for the selected clinic</li>
                   <li>Date format should be YYYY-MM-DD (e.g., 1965-03-15)</li>
                 </ul>
               </div>
+
           </CardContent>
         </Card>
 
