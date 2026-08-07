@@ -9,6 +9,8 @@ import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useClinic } from "@/contexts/ClinicContext";
 import * as XLSX from 'xlsx';
+import { extractVendorClientPairs, resolveOrCreateVendor, syncPatientVendorLinks } from '@/utils/vendorClientIds';
+
 
 interface PatientRow {
   name?: string;
@@ -196,79 +198,16 @@ export default function UploadClinic() {
             .eq('k_number', String(kNumber).trim());
           if (checkError) throw checkError;
 
-          // Parse vendor names from a variety of possible headers
-          const vendorsCell = (
-            map['vendors'] ??
-            map['vendor'] ??
-            map['assignedvendors'] ??
-            map['assignedvendor'] ??
-            map['dispensary'] ??
-            map['dispensaries'] ??
-            map['pharmacy'] ??
-            ''
-          ) as string | undefined;
+          // Parse vendor / Client ID pairs ("Client ID N" + "Vendor N", any count)
+          // or the legacy comma-separated "Vendors" column
+          const vendorPairs = extractVendorClientPairs(map);
 
-          const vendorsRaw = vendorsCell ? String(vendorsCell).trim() : '';
-
-          // Resolve vendor IDs for this clinic (fuzzy match, suffix cleanup)
           let vendorIds: string[] = [];
-          if (vendorsRaw) {
-            const normalizedListStr = String(vendorsRaw).replace(/&/g, ',');
-            const vendorNames = normalizedListStr
-              .split(/[;,|\/\n]+/)
-              .map((v) => v.replace(/^[\"']|[\"']$/g, '').trim())
-              .filter((v) => v.length > 0);
-
-            for (const originalName of vendorNames) {
-              const vendorName = originalName.trim();
-              
-              let vendorMatchId: string | null = null;
-
-              // First try exact match (case-insensitive)
-              const { data: exactMatch } = await (supabase as any)
-                .from('vendors')
-                .select('id')
-                .eq('clinic_id', selectedClinic.id)
-                .ilike('name', vendorName)
-                .limit(1)
-                .maybeSingle();
-              
-              if (exactMatch?.id) {
-                vendorMatchId = exactMatch.id;
-              } else {
-                // Then try partial match
-                const { data: partialMatch } = await (supabase as any)
-                  .from('vendors')
-                  .select('id')
-                  .eq('clinic_id', selectedClinic.id)
-                  .ilike('name', `%${vendorName}%`)
-                  .limit(1)
-                  .maybeSingle();
-                if (partialMatch?.id) {
-                  vendorMatchId = partialMatch.id;
-                }
-              }
-
-              // Auto-create vendor if not found (then map)
-              if (!vendorMatchId) {
-                const { data: createdVendor, error: createVendorError } = await (supabase as any)
-                  .from('vendors')
-                  .insert({
-                    clinic_id: selectedClinic.id,
-                    name: vendorName.trim(),
-                    status: 'active',
-                  } as any)
-                  .select('id')
-                  .single();
-                if (!createVendorError && createdVendor?.id) {
-                  vendorMatchId = createdVendor.id;
-                }
-              }
-
-              if (vendorMatchId) vendorIds.push(vendorMatchId);
-            }
-            vendorIds = Array.from(new Set(vendorIds));
+          for (const pair of vendorPairs) {
+            const vendorId = await resolveOrCreateVendor(selectedClinic.id, pair.vendorName);
+            if (vendorId && !vendorIds.includes(vendorId)) vendorIds.push(vendorId);
           }
+
 
           let patientId: string | null = null;
 
@@ -310,34 +249,21 @@ export default function UploadClinic() {
             successful++;
           }
 
-          // Link vendors for both new and existing patients
-          if (patientId && vendorIds.length > 0) {
-            const { data: existingLinks } = await (supabase as any)
-              .from('patient_vendors')
-              .select('vendor_id')
-              .eq('patient_id', patientId);
-
-            const existingSet = new Set((existingLinks || []).map((l: any) => l.vendor_id));
-            const newLinks = vendorIds
-              .filter((id) => !existingSet.has(id))
-              .map((id) => ({ patient_id: patientId, vendor_id: id }));
-
-            if (newLinks.length > 0) {
-              const { error: junctionError } = await (supabase as any)
-                .from('patient_vendors')
-                .insert(newLinks);
-              if (junctionError) {
-                console.error(`Failed to link vendors for patient ${patientId}:`, junctionError);
-                // Do not mark as failed, continue processing
-              }
-            }
+          // Link vendors (with their per-vendor Client IDs) for new and existing patients
+          if (patientId && vendorPairs.length > 0) {
+            const { errors: linkErrors } = await syncPatientVendorLinks(
+              patientId,
+              selectedClinic.id,
+              vendorPairs
+            );
+            linkErrors.forEach((e) => errors.push(`Row ${i + 2}: ${e}`));
 
             // Ensure preferred vendor is set if missing
             const { data: prefCheck } = await (supabase as any)
               .from('patients')
               .select('preferred_vendor_id')
               .eq('id', patientId)
-              .single();
+              .maybeSingle();
             if (!prefCheck?.preferred_vendor_id && vendorIds[0]) {
               await (supabase as any)
                 .from('patients')
@@ -345,6 +271,7 @@ export default function UploadClinic() {
                 .eq('id', patientId);
             }
           }
+
         } catch (error: any) {
           errors.push(`Row ${i + 2}: ${error.message}`);
           failed++;
@@ -437,7 +364,8 @@ export default function UploadClinic() {
                 <li><strong>Phone</strong> – Contact phone number (optional)</li>
                 <li><strong>Email</strong> – Email address (optional)</li>
                 <li><strong>Prescription Status</strong> – "active" or "inactive" (optional, defaults to "active")</li>
-                <li><strong>Vendors</strong> – Single vendor or multiple vendors separated by commas (optional)</li>
+                <li><strong>Client ID 1</strong> / <strong>Vendor 1</strong>, <strong>Client ID 2</strong> / <strong>Vendor 2</strong>, … – Vendor name plus that vendor's unique Client ID for the patient; add as many numbered pairs as the sheet needs (optional)</li>
+                <li><strong>Vendors</strong> – Legacy alternative: single vendor or multiple vendors separated by commas (used only when no Client ID / Vendor pairs exist)</li>
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
                 <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>

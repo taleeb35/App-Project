@@ -225,18 +225,21 @@ export type Database = {
       }
       patient_vendors: {
         Row: {
+          client_id: string | null
           created_at: string | null
           id: string
           patient_id: string
           vendor_id: string
         }
         Insert: {
+          client_id?: string | null
           created_at?: string | null
           id?: string
           patient_id: string
           vendor_id: string
         }
         Update: {
+          client_id?: string | null
           created_at?: string | null
           id?: string
           patient_id?: string

@@ -26,6 +26,7 @@ type Patient = {
 type Vendor = {
   id: string;
   name: string;
+  client_id?: string | null;
 };
 
 type Purchase = {
@@ -124,6 +125,7 @@ export default function PatientSearch() {
         .from('patient_vendors' as any)
         .select(`
           vendor_id,
+          client_id,
           vendors:vendor_id (
             id,
             name
@@ -133,8 +135,8 @@ export default function PatientSearch() {
 
       if (patientVendorsData && patientVendorsData.length > 0) {
         const vendorsList = patientVendorsData
-          .map((pv: any) => pv.vendors)
-          .filter(Boolean);
+          .filter((pv: any) => pv.vendors)
+          .map((pv: any) => ({ ...pv.vendors, client_id: pv.client_id ?? null }));
         setVendors(vendorsList);
       } else {
         // Fallback 1: legacy columns on patients table
@@ -298,12 +300,17 @@ export default function PatientSearch() {
                     <div className="flex items-start gap-3">
                       <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Vendors</p>
+                        <p className="text-sm text-muted-foreground">Vendors &amp; Client IDs</p>
                         {vendors.length > 0 ? (
                           <div className="flex flex-wrap gap-2 mt-1">
                             {vendors.map((vendor) => (
                               <Badge key={vendor.id} variant="outline">
                                 {vendor.name}
+                                {vendor.client_id && (
+                                  <span className="ml-1 font-mono text-xs text-muted-foreground">
+                                    · {vendor.client_id}
+                                  </span>
+                                )}
                               </Badge>
                             ))}
                           </div>
