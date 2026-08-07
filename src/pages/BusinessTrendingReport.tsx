@@ -54,6 +54,7 @@ type PatientLite = {
 type ReportLite = {
   patient_id: string;
   amount: number | null;
+  our_fee: number | null;
   grams_sold: number | null;
   report_month: string;
   product_name: string | null;
