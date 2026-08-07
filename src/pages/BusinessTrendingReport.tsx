@@ -302,6 +302,8 @@ export default function BusinessTrendingReport() {
     lines.push("Summary");
     lines.push("Metric,Value");
     lines.push(`Total Revenue,${kpis.totalRevenue.toFixed(2)}`);
+    lines.push(`Total Our Fee,${kpis.totalFee.toFixed(2)}`);
+    lines.push(`Fee % of Revenue,${kpis.feeRate.toFixed(2)}`);
     lines.push(`Total Grams,${kpis.totalGrams.toFixed(2)}`);
     lines.push(`Total Orders,${kpis.totalOrders}`);
     lines.push(`Unique Orderers,${kpis.uniqueOrderers}`);
