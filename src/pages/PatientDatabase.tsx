@@ -64,6 +64,7 @@ export default function PatientDatabase() {
   const [loading, setLoading] = useState(true);
   const [searchName, setSearchName] = useState("");
   const [searchKNumber, setSearchKNumber] = useState("");
+  const [searchClientId, setSearchClientId] = useState("");
   const [activityFilter, setActivityFilter] = useState("all_activity");
   const [statusFilter, setStatusFilter] = useState("all_status");
   const [vendorFilter, setVendorFilter] = useState("all_vendors");
@@ -410,6 +411,8 @@ export default function PatientDatabase() {
     return processedPatients.filter(patient => {
       const matchesName = searchName === "" || `${patient.first_name} ${patient.last_name}`.toLowerCase().includes(searchName.toLowerCase());
       const matchesKNumber = searchKNumber === "" || patient.k_number.toLowerCase().includes(searchKNumber.toLowerCase());
+      const matchesClientId = searchClientId === "" || (patient.associatedVendors || []).some(v =>
+        (v.client_id || "").toLowerCase().includes(searchClientId.trim().toLowerCase()));
       const matchesStatus = statusFilter === 'all_status' || patient.status === statusFilter;
       
       // Check if patient is associated with the selected vendor through patient_vendors table
@@ -435,9 +438,9 @@ export default function PatientDatabase() {
           matchesActivity = true;
       }
       
-      return matchesName && matchesKNumber && matchesStatus && matchesVendor && matchesPatientType && matchesLocation && matchesActivity;
+      return matchesName && matchesKNumber && matchesClientId && matchesStatus && matchesVendor && matchesPatientType && matchesLocation && matchesActivity;
     });
-  }, [processedPatients, searchName, searchKNumber, activityFilter, statusFilter, vendorFilter, patientTypeFilter, locationFilter]);
+  }, [processedPatients, searchName, searchKNumber, searchClientId, activityFilter, statusFilter, vendorFilter, patientTypeFilter, locationFilter]);
 
   const locationOptions = useMemo(() => {
     const set = new Set<string>();
@@ -503,6 +506,7 @@ export default function PatientDatabase() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div><Label htmlFor="search_name">Search by Name</Label><Input id="search_name" placeholder="Name..." value={searchName} onChange={(e) => setSearchName(e.target.value)} /></div>
             <div><Label htmlFor="search_k_number">Search by K Number</Label><Input id="search_k_number" placeholder="K Number..." value={searchKNumber} onChange={(e) => setSearchKNumber(e.target.value)} /></div>
+            <div><Label htmlFor="search_client_id">Search by Client ID</Label><Input id="search_client_id" placeholder="Client ID..." value={searchClientId} onChange={(e) => setSearchClientId(e.target.value)} /></div>
             <div>
               <Label htmlFor="patient_type_filter">Filter by Patient Type</Label>
               <Select value={patientTypeFilter} onValueChange={setPatientTypeFilter}>
