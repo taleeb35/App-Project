@@ -607,6 +607,7 @@ export default function VendorReportUpload() {
                       <TableHead>Client ID</TableHead>
                       <TableHead className="text-right">Grams</TableHead>
                       <TableHead className="text-right">Net Sales</TableHead>
+                      <TableHead className="text-right">Our Fee</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
