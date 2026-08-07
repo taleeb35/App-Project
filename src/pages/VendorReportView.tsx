@@ -140,6 +140,7 @@ export default function VendorReportView() {
 
   const totalGrams = filteredReports.reduce((sum, r) => sum + (r.grams_sold || 0), 0);
   const totalAmount = filteredReports.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const totalFee = filteredReports.reduce((sum, r) => sum + (r.our_fee || 0), 0);
 
   const totalPages = Math.ceil(filteredReports.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
