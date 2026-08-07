@@ -541,6 +541,7 @@ export type Database = {
           grams_sold: number | null
           id: string
           is_dummy: boolean | null
+          our_fee: number
           patient_id: string
           product_name: string | null
           report_month: string
@@ -554,6 +555,7 @@ export type Database = {
           grams_sold?: number | null
           id?: string
           is_dummy?: boolean | null
+          our_fee?: number
           patient_id: string
           product_name?: string | null
           report_month: string
@@ -567,6 +569,7 @@ export type Database = {
           grams_sold?: number | null
           id?: string
           is_dummy?: boolean | null
+          our_fee?: number
           patient_id?: string
           product_name?: string | null
           report_month?: string

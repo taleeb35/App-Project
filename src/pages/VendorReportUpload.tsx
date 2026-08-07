@@ -83,6 +83,7 @@ export default function VendorReportUpload() {
     linksCreated: number;
     totalAmount: number;
     totalGrams: number;
+    totalFee: number;
     replaced: number;
   } | null>(null);
 
@@ -350,10 +351,14 @@ export default function VendorReportUpload() {
       }
 
       // Aggregate per patient so one patient = one monthly record
-      const perPatient = new Map<string, { grams: number; amount: number }>();
+      const perPatient = new Map<string, { grams: number; amount: number; fee: number }>();
       matched.forEach((m) => {
-        const cur = perPatient.get(m.patientId!) || { grams: 0, amount: 0 };
-        perPatient.set(m.patientId!, { grams: cur.grams + m.grams, amount: cur.amount + m.amount });
+        const cur = perPatient.get(m.patientId!) || { grams: 0, amount: 0, fee: 0 };
+        perPatient.set(m.patientId!, {
+          grams: cur.grams + m.grams,
+          amount: cur.amount + m.amount,
+          fee: cur.fee + m.fee,
+        });
       });
 
       const records = Array.from(perPatient.entries()).map(([patient_id, v]) => ({
@@ -364,6 +369,7 @@ export default function VendorReportUpload() {
         product_name: 'Medical Cannabis',
         grams_sold: v.grams,
         amount: v.amount,
+        our_fee: v.fee,
       }));
 
       const { error: insertError } = await supabase.from('vendor_reports').insert(records);
@@ -389,6 +395,7 @@ export default function VendorReportUpload() {
         linksCreated: newLinks.length,
         totalAmount: matched.reduce((s, m) => s + m.amount, 0),
         totalGrams: matched.reduce((s, m) => s + m.grams, 0),
+        totalFee: matched.reduce((s, m) => s + m.fee, 0),
         replaced,
       });
 
@@ -415,7 +422,7 @@ export default function VendorReportUpload() {
   const downloadUnmatched = () => {
     if (!result?.unmatched.length) return;
     const csv = [
-      ['Row', 'Client ID', 'K Number', 'Patient Name', 'Grams', 'Net Sales', 'Reason'],
+      ['Row', 'Client ID', 'K Number', 'Patient Name', 'Grams', 'Net Sales', 'Our Fee', 'Reason'],
       ...result.unmatched.map((r) => [
         r.rowNumber,
         r.clientId ?? '',
@@ -423,6 +430,7 @@ export default function VendorReportUpload() {
         r.name ?? '',
         r.grams,
         r.amount,
+        r.fee,
         r.reason ?? '',
       ]),
     ]
@@ -551,7 +559,7 @@ export default function VendorReportUpload() {
                   : 'Fresh upload for this vendor & month'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">{result.matched.length}</p>
                 <p className="text-sm text-muted-foreground">Rows matched</p>
@@ -571,6 +579,10 @@ export default function VendorReportUpload() {
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">${result.totalAmount.toLocaleString()}</p>
                 <p className="text-sm text-muted-foreground">Total net sales</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-2xl font-bold">${result.totalFee.toLocaleString()}</p>
+                <p className="text-sm text-muted-foreground">Total our fee</p>
               </div>
             </CardContent>
             {result.linksCreated > 0 && (
@@ -599,6 +611,7 @@ export default function VendorReportUpload() {
                       <TableHead>Client ID</TableHead>
                       <TableHead className="text-right">Grams</TableHead>
                       <TableHead className="text-right">Net Sales</TableHead>
+                      <TableHead className="text-right">Our Fee</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -618,6 +631,7 @@ export default function VendorReportUpload() {
                         <TableCell>{m.clientId || '—'}</TableCell>
                         <TableCell className="text-right">{m.grams}</TableCell>
                         <TableCell className="text-right">${m.amount.toLocaleString()}</TableCell>
+                        <TableCell className="text-right">${m.fee.toLocaleString()}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

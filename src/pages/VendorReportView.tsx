@@ -18,6 +18,7 @@ type VendorReport = {
   product_name: string;
   grams_sold: number;
   amount: number;
+  our_fee: number;
   created_at: string;
   vendors: { name: string };
   patients: { first_name: string; last_name: string; k_number: string };
@@ -140,6 +141,7 @@ export default function VendorReportView() {
 
   const totalGrams = filteredReports.reduce((sum, r) => sum + (r.grams_sold || 0), 0);
   const totalAmount = filteredReports.reduce((sum, r) => sum + (r.amount || 0), 0);
+  const totalFee = filteredReports.reduce((sum, r) => sum + (r.our_fee || 0), 0);
 
   const totalPages = Math.ceil(filteredReports.length / pageSize);
   const startIndex = (currentPage - 1) * pageSize;
@@ -167,7 +169,7 @@ export default function VendorReportView() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Records</CardTitle>
@@ -198,6 +200,17 @@ export default function VendorReportView() {
           <CardContent>
             <div className="text-2xl font-bold">${totalAmount.toFixed(2)}</div>
             <p className="text-xs text-muted-foreground">Total revenue</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Our Fee</CardTitle>
+            <FileText className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalFee.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Clinic margin</p>
           </CardContent>
         </Card>
       </div>
@@ -280,12 +293,13 @@ export default function VendorReportView() {
                     <TableHead>Product</TableHead>
                     <TableHead>Grams</TableHead>
                     <TableHead>Amount</TableHead>
+                    <TableHead>Our Fee</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredReports.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                         No vendor reports found
                       </TableCell>
                     </TableRow>
@@ -317,6 +331,9 @@ export default function VendorReportView() {
                         </TableCell>
                         <TableCell>
                           <p className="font-mono">${report.amount?.toFixed(2) || '0.00'}</p>
+                        </TableCell>
+                        <TableCell>
+                          <p className="font-mono">${report.our_fee?.toFixed(2) || '0.00'}</p>
                         </TableCell>
                       </TableRow>
                     ))

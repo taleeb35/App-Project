@@ -54,6 +54,7 @@ type PatientLite = {
 type ReportLite = {
   patient_id: string;
   amount: number | null;
+  our_fee: number | null;
   grams_sold: number | null;
   report_month: string;
   product_name: string | null;
@@ -108,7 +109,7 @@ export default function BusinessTrendingReport() {
           .eq("clinic_id", selectedClinic.id),
         supabase
           .from("vendor_reports")
-          .select("patient_id, amount, grams_sold, report_month, product_name, vendor_id")
+          .select("patient_id, amount, our_fee, grams_sold, report_month, product_name, vendor_id")
           .eq("clinic_id", selectedClinic.id)
           .gte("report_month", format(start, "yyyy-MM-dd"))
           .lte("report_month", format(end, "yyyy-MM-dd")),
@@ -167,6 +168,7 @@ export default function BusinessTrendingReport() {
     const civReports = filteredReports.filter((r) => civilianIds.has(r.patient_id));
 
     const totalRevenue = filteredReports.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalFee = filteredReports.reduce((s, r) => s + (Number(r.our_fee) || 0), 0);
     const totalGrams = filteredReports.reduce((s, r) => s + (Number(r.grams_sold) || 0), 0);
     const totalOrders = filteredReports.length;
     const uniqueOrderers = new Set(filteredReports.map((r) => r.patient_id)).size;
@@ -180,6 +182,8 @@ export default function BusinessTrendingReport() {
       totalVeteranPurchases: vetReports.reduce((s, r) => s + (Number(r.amount) || 0), 0),
       totalCivilianPurchases: civReports.reduce((s, r) => s + (Number(r.amount) || 0), 0),
       totalRevenue,
+      totalFee,
+      feeRate: totalRevenue > 0 ? (totalFee / totalRevenue) * 100 : 0,
       totalGrams,
       totalOrders,
       uniqueOrderers,
@@ -298,6 +302,8 @@ export default function BusinessTrendingReport() {
     lines.push("Summary");
     lines.push("Metric,Value");
     lines.push(`Total Revenue,${kpis.totalRevenue.toFixed(2)}`);
+    lines.push(`Total Our Fee,${kpis.totalFee.toFixed(2)}`);
+    lines.push(`Fee % of Revenue,${kpis.feeRate.toFixed(2)}`);
     lines.push(`Total Grams,${kpis.totalGrams.toFixed(2)}`);
     lines.push(`Total Orders,${kpis.totalOrders}`);
     lines.push(`Unique Orderers,${kpis.uniqueOrderers}`);
@@ -449,6 +455,13 @@ export default function BusinessTrendingReport() {
           {/* KPI Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard title="Total Revenue" value={kpis.totalRevenue} icon={DollarSign} format="currency" />
+            <StatCard
+              title="Our Fee (Margin)"
+              value={kpis.totalFee}
+              icon={DollarSign}
+              format="currency"
+              sub={`${kpis.feeRate.toFixed(1)}% of revenue`}
+            />
             <StatCard title="Total Grams Sold" value={kpis.totalGrams} icon={Package} format="grams" />
             <StatCard title="Total Orders" value={kpis.totalOrders} icon={ShoppingCart} />
             <StatCard title="Avg Order Value" value={kpis.aov} icon={TrendingUp} format="currency" />
