@@ -32,7 +32,7 @@ type Patient = {
   created_at: string;
   vendors: { name: string } | null;
   associatedVendorIds?: string[];
-  associatedVendors?: { id: string; name: string }[];
+  associatedVendors?: { id: string; name: string; client_id?: string | null }[];
   totalSpent?: number;
   lastPurchaseDate?: Date | null;
 };
