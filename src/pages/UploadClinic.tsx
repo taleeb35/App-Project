@@ -9,7 +9,7 @@ import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useClinic } from "@/contexts/ClinicContext";
 import * as XLSX from 'xlsx';
-import { extractVendorClientPairs, resolveOrCreateVendor, syncPatientVendorLinks } from '@/utils/vendorClientIds';
+import { extractVendorClientPairs, resolveOrCreateVendor, syncPatientVendorLinks, resetVendorCache } from '@/utils/vendorClientIds';
 
 
 interface PatientRow {
@@ -98,6 +98,7 @@ export default function UploadClinic() {
     }
 
     setIsUploading(true);
+    resetVendorCache();
     const errors: string[] = [];
     let successful = 0;
     let failed = 0;

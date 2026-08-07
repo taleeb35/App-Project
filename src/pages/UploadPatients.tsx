@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useClinic } from '@/contexts/ClinicContext';
 import * as XLSX from 'xlsx';
 import { AdminLayout } from '@/components/layout/AdminLayout';
-import { extractVendorClientPairs, syncPatientVendorLinks } from '@/utils/vendorClientIds';
+import { extractVendorClientPairs, syncPatientVendorLinks, resetVendorCache } from '@/utils/vendorClientIds';
 
 
 interface PatientRow {
@@ -144,6 +144,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
     }
 
     setUploading(true);
+    resetVendorCache();
     const errors: string[] = [];
     let addedCount = 0;
     let skippedCount = 0;
