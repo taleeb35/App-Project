@@ -54,40 +54,82 @@ export function extractVendorClientPairs(map: Record<string, unknown>): VendorCl
   return pairs;
 }
 
-/** Finds a vendor for the clinic by name (exact, then partial), auto-creating it when missing. */
+/** Normalizes a vendor name for duplicate-safe comparison (case, spaces, punctuation, "inc"/"llc"). */
+const normalizeVendorName = (name: string) =>
+  name
+    .toString()
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '')
+    .replace(/(inc|llc|ltd|co|corp)$/, '');
+
+// Per-clinic cache of existing vendors so one upload never creates the same vendor twice
+const vendorCache = new Map<string, Map<string, string>>();
+
+/** Clears the cached vendor lookup (call before starting a new upload run). */
+export function resetVendorCache() {
+  vendorCache.clear();
+}
+
+async function loadClinicVendors(clinicId: string): Promise<Map<string, string>> {
+  const cached = vendorCache.get(clinicId);
+  if (cached) return cached;
+
+  const { data } = await (supabase as any)
+    .from('vendors')
+    .select('id, name')
+    .eq('clinic_id', clinicId);
+
+  const map = new Map<string, string>();
+  (data || []).forEach((v: any) => {
+    const key = normalizeVendorName(v.name || '');
+    if (key && !map.has(key)) map.set(key, v.id);
+  });
+  vendorCache.set(clinicId, map);
+  return map;
+}
+
+/**
+ * Resolves a vendor for the clinic by name, reusing an existing vendor whenever one
+ * matches (case/spacing/punctuation-insensitive). Only creates a vendor when none exists.
+ */
 export async function resolveOrCreateVendor(clinicId: string, vendorName: string): Promise<string | null> {
   const name = vendorName.trim();
   if (!name) return null;
 
-  const { data: exact } = await (supabase as any)
-    .from('vendors')
-    .select('id')
-    .eq('clinic_id', clinicId)
-    .ilike('name', name)
-    .limit(1)
-    .maybeSingle();
-  if (exact?.id) return exact.id;
+  const key = normalizeVendorName(name);
+  if (!key) return null;
 
-  const { data: partial } = await (supabase as any)
-    .from('vendors')
-    .select('id')
-    .eq('clinic_id', clinicId)
-    .ilike('name', `%${name}%`)
-    .limit(1)
-    .maybeSingle();
-  if (partial?.id) return partial.id;
+  const vendors = await loadClinicVendors(clinicId);
+  const existing = vendors.get(key);
+  if (existing) return existing;
 
   const { data: created, error } = await (supabase as any)
     .from('vendors')
     .insert({ clinic_id: clinicId, name, status: 'active' } as any)
     .select('id')
     .single();
+
   if (error) {
+    // Possible race/unique conflict — re-check the database before giving up
+    const { data: refetched } = await (supabase as any)
+      .from('vendors')
+      .select('id, name')
+      .eq('clinic_id', clinicId)
+      .ilike('name', name)
+      .limit(1)
+      .maybeSingle();
+    if (refetched?.id) {
+      vendors.set(key, refetched.id);
+      return refetched.id;
+    }
     console.error('Failed to auto-create vendor', name, error);
     return null;
   }
+
+  if (created?.id) vendors.set(key, created.id);
   return created?.id ?? null;
 }
+
 
 /**
  * Links a patient to the given vendors and stores the vendor-specific Client ID.
