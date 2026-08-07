@@ -18,6 +18,7 @@ type VendorReport = {
   product_name: string;
   grams_sold: number;
   amount: number;
+  our_fee: number;
   created_at: string;
   vendors: { name: string };
   patients: { first_name: string; last_name: string; k_number: string };
