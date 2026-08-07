@@ -332,6 +332,9 @@ export default function VendorReportView() {
                         <TableCell>
                           <p className="font-mono">${report.amount?.toFixed(2) || '0.00'}</p>
                         </TableCell>
+                        <TableCell>
+                          <p className="font-mono">${report.our_fee?.toFixed(2) || '0.00'}</p>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
