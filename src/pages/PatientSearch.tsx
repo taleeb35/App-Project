@@ -26,6 +26,7 @@ type Patient = {
 type Vendor = {
   id: string;
   name: string;
+  client_id?: string | null;
 };
 
 type Purchase = {
