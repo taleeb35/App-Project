@@ -168,6 +168,7 @@ export default function BusinessTrendingReport() {
     const civReports = filteredReports.filter((r) => civilianIds.has(r.patient_id));
 
     const totalRevenue = filteredReports.reduce((s, r) => s + (Number(r.amount) || 0), 0);
+    const totalFee = filteredReports.reduce((s, r) => s + (Number(r.our_fee) || 0), 0);
     const totalGrams = filteredReports.reduce((s, r) => s + (Number(r.grams_sold) || 0), 0);
     const totalOrders = filteredReports.length;
     const uniqueOrderers = new Set(filteredReports.map((r) => r.patient_id)).size;
@@ -181,6 +182,8 @@ export default function BusinessTrendingReport() {
       totalVeteranPurchases: vetReports.reduce((s, r) => s + (Number(r.amount) || 0), 0),
       totalCivilianPurchases: civReports.reduce((s, r) => s + (Number(r.amount) || 0), 0),
       totalRevenue,
+      totalFee,
+      feeRate: totalRevenue > 0 ? (totalFee / totalRevenue) * 100 : 0,
       totalGrams,
       totalOrders,
       uniqueOrderers,
