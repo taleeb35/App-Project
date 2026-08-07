@@ -196,79 +196,16 @@ export default function UploadClinic() {
             .eq('k_number', String(kNumber).trim());
           if (checkError) throw checkError;
 
-          // Parse vendor names from a variety of possible headers
-          const vendorsCell = (
-            map['vendors'] ??
-            map['vendor'] ??
-            map['assignedvendors'] ??
-            map['assignedvendor'] ??
-            map['dispensary'] ??
-            map['dispensaries'] ??
-            map['pharmacy'] ??
-            ''
-          ) as string | undefined;
+          // Parse vendor / Client ID pairs ("Client ID N" + "Vendor N", any count)
+          // or the legacy comma-separated "Vendors" column
+          const vendorPairs = extractVendorClientPairs(map);
 
-          const vendorsRaw = vendorsCell ? String(vendorsCell).trim() : '';
-
-          // Resolve vendor IDs for this clinic (fuzzy match, suffix cleanup)
           let vendorIds: string[] = [];
-          if (vendorsRaw) {
-            const normalizedListStr = String(vendorsRaw).replace(/&/g, ',');
-            const vendorNames = normalizedListStr
-              .split(/[;,|\/\n]+/)
-              .map((v) => v.replace(/^[\"']|[\"']$/g, '').trim())
-              .filter((v) => v.length > 0);
-
-            for (const originalName of vendorNames) {
-              const vendorName = originalName.trim();
-              
-              let vendorMatchId: string | null = null;
-
-              // First try exact match (case-insensitive)
-              const { data: exactMatch } = await (supabase as any)
-                .from('vendors')
-                .select('id')
-                .eq('clinic_id', selectedClinic.id)
-                .ilike('name', vendorName)
-                .limit(1)
-                .maybeSingle();
-              
-              if (exactMatch?.id) {
-                vendorMatchId = exactMatch.id;
-              } else {
-                // Then try partial match
-                const { data: partialMatch } = await (supabase as any)
-                  .from('vendors')
-                  .select('id')
-                  .eq('clinic_id', selectedClinic.id)
-                  .ilike('name', `%${vendorName}%`)
-                  .limit(1)
-                  .maybeSingle();
-                if (partialMatch?.id) {
-                  vendorMatchId = partialMatch.id;
-                }
-              }
-
-              // Auto-create vendor if not found (then map)
-              if (!vendorMatchId) {
-                const { data: createdVendor, error: createVendorError } = await (supabase as any)
-                  .from('vendors')
-                  .insert({
-                    clinic_id: selectedClinic.id,
-                    name: vendorName.trim(),
-                    status: 'active',
-                  } as any)
-                  .select('id')
-                  .single();
-                if (!createVendorError && createdVendor?.id) {
-                  vendorMatchId = createdVendor.id;
-                }
-              }
-
-              if (vendorMatchId) vendorIds.push(vendorMatchId);
-            }
-            vendorIds = Array.from(new Set(vendorIds));
+          for (const pair of vendorPairs) {
+            const vendorId = await resolveOrCreateVendor(selectedClinic.id, pair.vendorName);
+            if (vendorId && !vendorIds.includes(vendorId)) vendorIds.push(vendorId);
           }
+
 
           let patientId: string | null = null;
 
