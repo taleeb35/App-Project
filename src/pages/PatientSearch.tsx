@@ -300,12 +300,17 @@ export default function PatientSearch() {
                     <div className="flex items-start gap-3">
                       <Package className="h-5 w-5 text-muted-foreground mt-0.5" />
                       <div>
-                        <p className="text-sm text-muted-foreground">Vendors</p>
+                        <p className="text-sm text-muted-foreground">Vendors &amp; Client IDs</p>
                         {vendors.length > 0 ? (
                           <div className="flex flex-wrap gap-2 mt-1">
                             {vendors.map((vendor) => (
                               <Badge key={vendor.id} variant="outline">
                                 {vendor.name}
+                                {vendor.client_id && (
+                                  <span className="ml-1 font-mono text-xs text-muted-foreground">
+                                    · {vendor.client_id}
+                                  </span>
+                                )}
                               </Badge>
                             ))}
                           </div>
