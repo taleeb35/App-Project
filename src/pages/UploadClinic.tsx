@@ -9,6 +9,8 @@ import { Upload, FileSpreadsheet, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useClinic } from "@/contexts/ClinicContext";
 import * as XLSX from 'xlsx';
+import { extractVendorClientPairs, resolveOrCreateVendor, syncPatientVendorLinks } from '@/utils/vendorClientIds';
+
 
 interface PatientRow {
   name?: string;
