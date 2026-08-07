@@ -125,6 +125,7 @@ export default function PatientSearch() {
         .from('patient_vendors' as any)
         .select(`
           vendor_id,
+          client_id,
           vendors:vendor_id (
             id,
             name
@@ -134,8 +135,8 @@ export default function PatientSearch() {
 
       if (patientVendorsData && patientVendorsData.length > 0) {
         const vendorsList = patientVendorsData
-          .map((pv: any) => pv.vendors)
-          .filter(Boolean);
+          .filter((pv: any) => pv.vendors)
+          .map((pv: any) => ({ ...pv.vendors, client_id: pv.client_id ?? null }));
         setVendors(vendorsList);
       } else {
         // Fallback 1: legacy columns on patients table
