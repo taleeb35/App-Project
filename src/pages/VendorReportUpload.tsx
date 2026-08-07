@@ -83,6 +83,7 @@ export default function VendorReportUpload() {
     linksCreated: number;
     totalAmount: number;
     totalGrams: number;
+    totalFee: number;
     replaced: number;
   } | null>(null);
 
