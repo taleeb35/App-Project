@@ -249,34 +249,21 @@ export default function UploadClinic() {
             successful++;
           }
 
-          // Link vendors for both new and existing patients
-          if (patientId && vendorIds.length > 0) {
-            const { data: existingLinks } = await (supabase as any)
-              .from('patient_vendors')
-              .select('vendor_id')
-              .eq('patient_id', patientId);
-
-            const existingSet = new Set((existingLinks || []).map((l: any) => l.vendor_id));
-            const newLinks = vendorIds
-              .filter((id) => !existingSet.has(id))
-              .map((id) => ({ patient_id: patientId, vendor_id: id }));
-
-            if (newLinks.length > 0) {
-              const { error: junctionError } = await (supabase as any)
-                .from('patient_vendors')
-                .insert(newLinks);
-              if (junctionError) {
-                console.error(`Failed to link vendors for patient ${patientId}:`, junctionError);
-                // Do not mark as failed, continue processing
-              }
-            }
+          // Link vendors (with their per-vendor Client IDs) for new and existing patients
+          if (patientId && vendorPairs.length > 0) {
+            const { errors: linkErrors } = await syncPatientVendorLinks(
+              patientId,
+              selectedClinic.id,
+              vendorPairs
+            );
+            linkErrors.forEach((e) => errors.push(`Row ${i + 2}: ${e}`));
 
             // Ensure preferred vendor is set if missing
             const { data: prefCheck } = await (supabase as any)
               .from('patients')
               .select('preferred_vendor_id')
               .eq('id', patientId)
-              .single();
+              .maybeSingle();
             if (!prefCheck?.preferred_vendor_id && vendorIds[0]) {
               await (supabase as any)
                 .from('patients')
@@ -284,6 +271,7 @@ export default function UploadClinic() {
                 .eq('id', patientId);
             }
           }
+
         } catch (error: any) {
           errors.push(`Row ${i + 2}: ${error.message}`);
           failed++;
