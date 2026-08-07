@@ -144,6 +144,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
     }
 
     setUploading(true);
+    resetVendorCache();
     const errors: string[] = [];
     let addedCount = 0;
     let skippedCount = 0;
