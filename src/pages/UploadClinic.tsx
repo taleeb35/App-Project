@@ -369,7 +369,19 @@ export default function UploadClinic() {
                 <li><strong>Type</strong> – "Veterans" or "Civilians" (optional, defaults to "Veterans")</li>
                 <li><strong>Location/Roster</strong> – Patient location or roster designation (optional)</li>
               </ul>
+              <div className="mt-4 p-4 bg-muted rounded-md border">
+                <p className="text-sm font-medium mb-2">📌 Important Notes:</p>
+                <ul className="text-sm space-y-1 list-disc list-inside">
+                  <li>Column names must match exactly as shown above</li>
+                  <li>Name, DOB, and K Number are required fields</li>
+                  <li>Each patient has a different Client ID with every vendor — keep each Client ID next to its own Vendor column</li>
+                  <li>Leave a Client ID / Vendor pair blank if the patient does not use that vendor</li>
+                  <li>Vendors that don't exist yet are created automatically for the selected clinic</li>
+                  <li>Date format should be YYYY-MM-DD (e.g., 1965-03-15)</li>
+                </ul>
+              </div>
             </AlertDescription>
+
           </Alert>
 
           <Button 
