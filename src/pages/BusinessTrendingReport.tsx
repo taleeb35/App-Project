@@ -455,6 +455,13 @@ export default function BusinessTrendingReport() {
           {/* KPI Grid */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard title="Total Revenue" value={kpis.totalRevenue} icon={DollarSign} format="currency" />
+            <StatCard
+              title="Our Fee (Margin)"
+              value={kpis.totalFee}
+              icon={DollarSign}
+              format="currency"
+              sub={`${kpis.feeRate.toFixed(1)}% of revenue`}
+            />
             <StatCard title="Total Grams Sold" value={kpis.totalGrams} icon={Package} format="grams" />
             <StatCard title="Total Orders" value={kpis.totalOrders} icon={ShoppingCart} />
             <StatCard title="Avg Order Value" value={kpis.aov} icon={TrendingUp} format="currency" />
