@@ -200,6 +200,17 @@ export default function VendorReportView() {
             <p className="text-xs text-muted-foreground">Total revenue</p>
           </CardContent>
         </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">Our Fee</CardTitle>
+            <FileText className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${totalFee.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">Clinic margin</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
