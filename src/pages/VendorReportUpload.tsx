@@ -422,7 +422,7 @@ export default function VendorReportUpload() {
   const downloadUnmatched = () => {
     if (!result?.unmatched.length) return;
     const csv = [
-      ['Row', 'Client ID', 'K Number', 'Patient Name', 'Grams', 'Net Sales', 'Reason'],
+      ['Row', 'Client ID', 'K Number', 'Patient Name', 'Grams', 'Net Sales', 'Our Fee', 'Reason'],
       ...result.unmatched.map((r) => [
         r.rowNumber,
         r.clientId ?? '',
@@ -430,6 +430,7 @@ export default function VendorReportUpload() {
         r.name ?? '',
         r.grams,
         r.amount,
+        r.fee,
         r.reason ?? '',
       ]),
     ]
