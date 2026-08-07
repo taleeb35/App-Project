@@ -350,10 +350,14 @@ export default function VendorReportUpload() {
       }
 
       // Aggregate per patient so one patient = one monthly record
-      const perPatient = new Map<string, { grams: number; amount: number }>();
+      const perPatient = new Map<string, { grams: number; amount: number; fee: number }>();
       matched.forEach((m) => {
-        const cur = perPatient.get(m.patientId!) || { grams: 0, amount: 0 };
-        perPatient.set(m.patientId!, { grams: cur.grams + m.grams, amount: cur.amount + m.amount });
+        const cur = perPatient.get(m.patientId!) || { grams: 0, amount: 0, fee: 0 };
+        perPatient.set(m.patientId!, {
+          grams: cur.grams + m.grams,
+          amount: cur.amount + m.amount,
+          fee: cur.fee + m.fee,
+        });
       });
 
       const records = Array.from(perPatient.entries()).map(([patient_id, v]) => ({
@@ -364,6 +368,7 @@ export default function VendorReportUpload() {
         product_name: 'Medical Cannabis',
         grams_sold: v.grams,
         amount: v.amount,
+        our_fee: v.fee,
       }));
 
       const { error: insertError } = await supabase.from('vendor_reports').insert(records);
