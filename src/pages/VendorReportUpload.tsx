@@ -7,9 +7,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Link2 } from 'lucide-react';
+import { Upload, FileSpreadsheet, CheckCircle, AlertTriangle, Link2, UserPlus } from 'lucide-react';
 import { useClinic } from '@/contexts/ClinicContext';
 import { useAuth } from '@/contexts/AuthContext';
 import * as XLSX from 'xlsx';
@@ -23,9 +31,19 @@ type MatchRow = {
   amount: number;
   fee: number;
   patientId?: string;
-  matchedBy?: 'client_id' | 'k_number' | 'name';
+  vendorId?: string;
+  vendorName?: string;
+  matchedBy?: 'client_id' | 'k_number' | 'name' | 'created';
   matchedPatient?: string;
   reason?: string;
+};
+
+type NewPatient = {
+  rowNumber: number;
+  name: string;
+  kNumber: string;
+  clientId: string | null;
+  vendorName: string;
 };
 
 const normKey = (s: any) =>
@@ -76,15 +94,18 @@ export default function VendorReportUpload() {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [vendors, setVendors] = useState<any[]>([]);
+  const [showNewPatients, setShowNewPatients] = useState(false);
   const [result, setResult] = useState<{
     inserted: number;
     matched: MatchRow[];
     unmatched: MatchRow[];
+    newPatients: NewPatient[];
     linksCreated: number;
     totalAmount: number;
     totalGrams: number;
     totalFee: number;
     replaced: number;
+    vendorsInFile: string[];
   } | null>(null);
 
   useEffect(() => {
@@ -147,7 +168,7 @@ export default function VendorReportUpload() {
     if (!selectedVendor || !reportMonth || !uploadFile) {
       toast({
         title: 'Missing Information',
-        description: 'Please select vendor, month, and upload file',
+        description: 'Please select the fallback vendor, month, and upload file',
         variant: 'destructive',
       });
       return;
@@ -184,9 +205,11 @@ export default function VendorReportUpload() {
         grams: findIdx(headers, H.grams),
         amount: findIdx(headers, H.amount),
         fee: findIdx(headers, H.fee),
+        status: findIdx(headers, H.status),
+        category: findIdx(headers, H.category),
       };
 
-      // --- Load clinic patients + vendor client-id links once ---
+      // --- Load clinic patients + all vendor client-id links once ---
       const { data: patients, error: patientsError } = await supabase
         .from('patients')
         .select('id, k_number, first_name, last_name')
@@ -201,35 +224,65 @@ export default function VendorReportUpload() {
       const patientIds = new Set((patients || []).map((p: any) => p.id));
       const byK = new Map<string, string>();
       const byName = new Map<string, string[]>();
-      (patients || []).forEach((p: any) => {
+      const patientName = new Map<string, string>();
+      const registerPatient = (p: any) => {
+        patientIds.add(p.id);
         const k = normId(p.k_number);
         if (k && !byK.has(k)) byK.set(k, p.id);
         const n = normName(`${p.first_name || ''} ${p.last_name || ''}`);
         if (n) byName.set(n, [...(byName.get(n) || []), p.id]);
-        const first = normName(p.first_name);
-        if (first && first !== n) byName.set(first, [...(byName.get(first) || []), p.id]);
-      });
-      const patientName = new Map(
-        (patients || []).map((p: any) => [p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim()])
-      );
+        patientName.set(p.id, `${p.first_name || ''} ${p.last_name || ''}`.trim());
+      };
+      (patients || []).forEach(registerPatient);
 
-      // Client ID index: this vendor first, then any vendor of this clinic's patients
-      const clientIdThisVendor = new Map<string, string>();
-      const clientIdAnyVendor = new Map<string, string>();
-      const existingLinkKeys = new Set<string>();
+      const vendorNameById = new Map<string, string>(vendors.map((v: any) => [v.id, v.name]));
+
+      // Client ID -> all (patient, vendor) links for this clinic's patients
+      const cidLinks = new Map<string, { patientId: string; vendorId: string; linkId: string }[]>();
+      const linkByPatientVendor = new Map<string, { id: string; client_id: string | null }>();
       (links || []).forEach((l: any) => {
         if (!patientIds.has(l.patient_id)) return;
-        existingLinkKeys.add(`${l.patient_id}|${l.vendor_id}`);
+        linkByPatientVendor.set(`${l.patient_id}|${l.vendor_id}`, { id: l.id, client_id: l.client_id });
         const cid = normId(l.client_id);
         if (!cid) return;
-        if (l.vendor_id === selectedVendor) clientIdThisVendor.set(cid, l.patient_id);
-        else if (!clientIdAnyVendor.has(cid)) clientIdAnyVendor.set(cid, l.patient_id);
+        cidLinks.set(cid, [
+          ...(cidLinks.get(cid) || []),
+          { patientId: l.patient_id, vendorId: l.vendor_id, linkId: l.id },
+        ]);
       });
 
       // --- Match each data row ---
       const matched: MatchRow[] = [];
       const unmatched: MatchRow[] = [];
-      const newLinks: any[] = [];
+      const newPatients: NewPatient[] = [];
+      let linksCreated = 0;
+
+      const ensureLink = async (patientId: string, vendorId: string, clientId: string | null) => {
+        const key = `${patientId}|${vendorId}`;
+        const existing = linkByPatientVendor.get(key);
+        if (!existing) {
+          const { data: inserted } = await (supabase as any)
+            .from('patient_vendors')
+            .insert({ patient_id: patientId, vendor_id: vendorId, client_id: clientId || null })
+            .select('id')
+            .single();
+          linkByPatientVendor.set(key, { id: inserted?.id, client_id: clientId || null });
+          linksCreated += 1;
+        } else if (clientId && !normId(existing.client_id)) {
+          await (supabase as any)
+            .from('patient_vendors')
+            .update({ client_id: clientId })
+            .eq('id', existing.id);
+          linkByPatientVendor.set(key, { id: existing.id, client_id: clientId });
+        }
+        const cid = normId(clientId);
+        if (cid) {
+          const list = cidLinks.get(cid) || [];
+          if (!list.some((l) => l.patientId === patientId && l.vendorId === vendorId)) {
+            cidLinks.set(cid, [...list, { patientId, vendorId, linkId: '' }]);
+          }
+        }
+      };
 
       for (let i = headerIdx + 1; i < rows.length; i++) {
         const row = rows[i] || [];
@@ -249,57 +302,123 @@ export default function VendorReportUpload() {
         };
 
         let patientId: string | undefined;
+        let vendorId: string | undefined;
         let matchedBy: MatchRow['matchedBy'];
 
+        // 1) Auto-detect vendor + patient from the Client ID link
         const cid = normId(clientId);
-        if (cid && clientIdThisVendor.has(cid)) {
-          patientId = clientIdThisVendor.get(cid);
-          matchedBy = 'client_id';
+        if (cid && cidLinks.has(cid)) {
+          const candidates = cidLinks.get(cid)!;
+          const distinctPatients = new Set(candidates.map((c) => c.patientId));
+          const preferred =
+            candidates.find((c) => c.vendorId === selectedVendor) ||
+            (candidates.length === 1 ? candidates[0] : undefined);
+
+          if (preferred) {
+            patientId = preferred.patientId;
+            vendorId = preferred.vendorId;
+            matchedBy = 'client_id';
+          } else if (distinctPatients.size > 1) {
+            unmatched.push({
+              ...base,
+              reason:
+                'This Client ID is registered with more than one patient/vendor — upload that vendor separately or fix the Client ID',
+            });
+            continue;
+          } else {
+            patientId = candidates[0].patientId;
+            vendorId = candidates[0].vendorId;
+            matchedBy = 'client_id';
+          }
         }
+
+        // 2) K Number (vendor falls back to the selected vendor)
         if (!patientId) {
           const k = normId(kNumber);
           if (k && byK.has(k)) {
             patientId = byK.get(k);
+            vendorId = selectedVendor;
             matchedBy = 'k_number';
           }
         }
-        if (!patientId && cid && clientIdAnyVendor.has(cid)) {
-          patientId = clientIdAnyVendor.get(cid);
-          matchedBy = 'client_id';
-        }
+
+        // 3) Unique patient name
         if (!patientId && name) {
           const candidates = byName.get(normName(name));
-          if (candidates && candidates.length === 1) {
+          if (candidates && new Set(candidates).size === 1) {
             patientId = candidates[0];
+            vendorId = selectedVendor;
             matchedBy = 'name';
-          } else if (candidates && candidates.length > 1) {
+          } else if (candidates && new Set(candidates).size > 1) {
             unmatched.push({ ...base, reason: 'Multiple patients share this name — add Client ID or K Number' });
             continue;
           }
         }
 
+        // 4) Brand-new patient — create it against the selected (fallback) vendor
         if (!patientId) {
-          unmatched.push({ ...base, reason: 'No matching patient found in this clinic' });
-          continue;
-        }
-
-        matched.push({ ...base, patientId, matchedBy, matchedPatient: patientName.get(patientId) || '' });
-
-        // Backfill the vendor link / Client ID so future reports match instantly
-        const linkKey = `${patientId}|${selectedVendor}`;
-        if (!existingLinkKeys.has(linkKey)) {
-          existingLinkKeys.add(linkKey);
-          newLinks.push({ patient_id: patientId, vendor_id: selectedVendor, client_id: clientId || null });
-          if (cid) clientIdThisVendor.set(cid, patientId);
-        } else if (cid && !clientIdThisVendor.has(cid)) {
-          const link = (links || []).find(
-            (l: any) => l.patient_id === patientId && l.vendor_id === selectedVendor
-          );
-          if (link && !normId(link.client_id)) {
-            await (supabase as any).from('patient_vendors').update({ client_id: clientId }).eq('id', link.id);
-            clientIdThisVendor.set(cid, patientId);
+          if (!name && !kNumber) {
+            unmatched.push({
+              ...base,
+              reason: 'New Client ID but no Patient Name or K Number to create the patient',
+            });
+            continue;
           }
+          const parts = name.replace(/\./g, ' ').split(/\s+/).filter(Boolean);
+          const firstName = parts[0] || 'Unknown';
+          const lastName = parts.slice(1).join(' ') || '';
+          const kValue = kNumber || (clientId ? `CID-${clientId}` : `AUTO-${Date.now()}-${i}`);
+          const categoryRaw = idx.category !== -1 ? String(row[idx.category] ?? '') : '';
+          const patientType = /vet/i.test(categoryRaw) ? 'Veteran' : 'Civilian';
+          const statusRaw = idx.status !== -1 ? String(row[idx.status] ?? '').trim().toLowerCase() : '';
+
+          const { data: created, error: createError } = await (supabase as any)
+            .from('patients')
+            .insert({
+              clinic_id: selectedClinic.id,
+              first_name: firstName,
+              last_name: lastName,
+              k_number: kValue,
+              patient_type: patientType,
+              prescription_status: statusRaw === 'inactive' ? 'inactive' : 'active',
+              status: 'active',
+              vendor_id: selectedVendor,
+              preferred_vendor_id: selectedVendor,
+            })
+            .select('id, k_number, first_name, last_name')
+            .single();
+
+          if (createError || !created) {
+            unmatched.push({
+              ...base,
+              reason: `Could not create new patient — ${createError?.message || 'unknown error'}`,
+            });
+            continue;
+          }
+
+          registerPatient(created);
+          patientId = created.id;
+          vendorId = selectedVendor;
+          matchedBy = 'created';
+          newPatients.push({
+            rowNumber: i + 1,
+            name: `${firstName} ${lastName}`.trim(),
+            kNumber: kValue,
+            clientId: clientId || null,
+            vendorName: vendorNameById.get(selectedVendor) || 'Selected vendor',
+          });
         }
+
+        await ensureLink(patientId!, vendorId!, clientId || null);
+
+        matched.push({
+          ...base,
+          patientId,
+          vendorId,
+          vendorName: vendorNameById.get(vendorId!) || '—',
+          matchedBy,
+          matchedPatient: patientName.get(patientId!) || '',
+        });
       }
 
       if (matched.length === 0) {
@@ -307,40 +426,46 @@ export default function VendorReportUpload() {
           inserted: 0,
           matched,
           unmatched,
-          linksCreated: 0,
+          newPatients,
+          linksCreated,
           totalAmount: 0,
           totalGrams: 0,
+          totalFee: 0,
           replaced: 0,
+          vendorsInFile: [],
         });
         throw new Error(
-          `No rows could be matched to existing patients (${unmatched.length} unmatched). Nothing was saved.`
+          `No rows could be processed (${unmatched.length} row(s) need attention). Nothing was saved.`
         );
       }
 
       const monthStart = `${reportMonth}-01`;
+      const vendorIdsInFile = Array.from(new Set(matched.map((m) => m.vendorId!)));
 
-      // Re-upload safety: replace this vendor/clinic/month batch instead of duplicating
-      const { data: existingReports } = await supabase
-        .from('vendor_reports')
-        .select('id')
-        .eq('vendor_id', selectedVendor)
-        .eq('clinic_id', selectedClinic.id)
-        .eq('report_month', monthStart);
-      const replaced = existingReports?.length || 0;
-      if (replaced > 0) {
+      // Re-upload safety: replace only the vendors present in this file, for this clinic + month
+      let replaced = 0;
+      for (const vId of vendorIdsInFile) {
+        const { data: existingReports } = await supabase
+          .from('vendor_reports')
+          .select('id')
+          .eq('vendor_id', vId)
+          .eq('clinic_id', selectedClinic.id)
+          .eq('report_month', monthStart);
+        const count = existingReports?.length || 0;
+        if (count === 0) continue;
+
         const { error: delError } = await supabase
           .from('vendor_reports')
           .delete()
-          .eq('vendor_id', selectedVendor)
+          .eq('vendor_id', vId)
           .eq('clinic_id', selectedClinic.id)
           .eq('report_month', monthStart);
         if (delError) throw delError;
 
-        // Guard against silent no-op deletes (permission issues) creating duplicates
         const { count: leftover } = await supabase
           .from('vendor_reports')
           .select('id', { count: 'exact', head: true })
-          .eq('vendor_id', selectedVendor)
+          .eq('vendor_id', vId)
           .eq('clinic_id', selectedClinic.id)
           .eq('report_month', monthStart);
         if ((leftover || 0) > 0) {
@@ -348,23 +473,26 @@ export default function VendorReportUpload() {
             'Existing records for this vendor and month could not be replaced. Nothing was saved — please contact support.'
           );
         }
+        replaced += count;
       }
 
-      // Aggregate per patient so one patient = one monthly record
-      const perPatient = new Map<string, { grams: number; amount: number; fee: number }>();
+      // Aggregate per vendor + patient so one patient = one monthly record per vendor
+      const perKey = new Map<string, { vendorId: string; patientId: string; grams: number; amount: number; fee: number }>();
       matched.forEach((m) => {
-        const cur = perPatient.get(m.patientId!) || { grams: 0, amount: 0, fee: 0 };
-        perPatient.set(m.patientId!, {
+        const key = `${m.vendorId}|${m.patientId}`;
+        const cur = perKey.get(key) || { vendorId: m.vendorId!, patientId: m.patientId!, grams: 0, amount: 0, fee: 0 };
+        perKey.set(key, {
+          ...cur,
           grams: cur.grams + m.grams,
           amount: cur.amount + m.amount,
           fee: cur.fee + m.fee,
         });
       });
 
-      const records = Array.from(perPatient.entries()).map(([patient_id, v]) => ({
-        vendor_id: selectedVendor,
+      const records = Array.from(perKey.values()).map((v) => ({
+        vendor_id: v.vendorId,
         clinic_id: selectedClinic.id,
-        patient_id,
+        patient_id: v.patientId,
         report_month: monthStart,
         product_name: 'Medical Cannabis',
         grams_sold: v.grams,
@@ -374,10 +502,6 @@ export default function VendorReportUpload() {
 
       const { error: insertError } = await supabase.from('vendor_reports').insert(records);
       if (insertError) throw insertError;
-
-      if (newLinks.length > 0) {
-        await (supabase as any).from('patient_vendors').insert(newLinks);
-      }
 
       await supabase.from('data_uploads').insert({
         clinic_id: selectedClinic.id,
@@ -392,18 +516,22 @@ export default function VendorReportUpload() {
         inserted: records.length,
         matched,
         unmatched,
-        linksCreated: newLinks.length,
+        newPatients,
+        linksCreated,
         totalAmount: matched.reduce((s, m) => s + m.amount, 0),
         totalGrams: matched.reduce((s, m) => s + m.grams, 0),
         totalFee: matched.reduce((s, m) => s + m.fee, 0),
         replaced,
+        vendorsInFile: vendorIdsInFile.map((v) => vendorNameById.get(v) || '—'),
       });
+
+      if (newPatients.length > 0) setShowNewPatients(true);
 
       toast({
         title: 'Sales Report Processed',
-        description: `${records.length} patient records saved${
-          unmatched.length ? ` · ${unmatched.length} row(s) need attention` : ''
-        }`,
+        description: `${records.length} patient records saved across ${vendorIdsInFile.length} vendor(s)${
+          newPatients.length ? ` · ${newPatients.length} new patient(s) added` : ''
+        }${unmatched.length ? ` · ${unmatched.length} row(s) need attention` : ''}`,
       });
 
       setUploadFile(null);
@@ -449,7 +577,7 @@ export default function VendorReportUpload() {
       <div>
         <h1 className="text-3xl font-bold">Upload Sales Report</h1>
         <p className="text-muted-foreground">
-          Monthly vendor sales reports are matched to existing patients by Client ID, K Number or Name
+          Each row's vendor is detected automatically from its Client ID — mixed-vendor sheets are supported
         </p>
       </div>
 
@@ -473,12 +601,12 @@ export default function VendorReportUpload() {
             <Upload className="h-5 w-5" />
             Monthly Sales Report
           </CardTitle>
-          <CardDescription>Upload the Excel or CSV report received from the vendor</CardDescription>
+          <CardDescription>Upload the Excel or CSV report received from the vendor(s)</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="vendor">Select Vendor</Label>
+              <Label htmlFor="vendor">Fallback Vendor</Label>
               <Select value={selectedVendor} onValueChange={setSelectedVendor}>
                 <SelectTrigger id="vendor">
                   <SelectValue placeholder="Choose vendor..." />
@@ -491,6 +619,9 @@ export default function VendorReportUpload() {
                   ))}
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Used only for rows whose Client ID is new or missing
+              </p>
             </div>
 
             <div className="space-y-2">
@@ -554,19 +685,26 @@ export default function VendorReportUpload() {
                 Processing Summary
               </CardTitle>
               <CardDescription>
+                {result.vendorsInFile.length > 0 && (
+                  <>Vendors detected: {result.vendorsInFile.join(', ')}. </>
+                )}
                 {result.replaced > 0
-                  ? `${result.replaced} previously uploaded record(s) for this vendor & month were replaced`
-                  : 'Fresh upload for this vendor & month'}
+                  ? `${result.replaced} previously uploaded record(s) for these vendors & month were replaced`
+                  : 'Fresh upload for this month'}
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            <CardContent className="grid grid-cols-2 md:grid-cols-7 gap-4">
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">{result.matched.length}</p>
-                <p className="text-sm text-muted-foreground">Rows matched</p>
+                <p className="text-sm text-muted-foreground">Rows processed</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">{result.inserted}</p>
-                <p className="text-sm text-muted-foreground">Patient records saved</p>
+                <p className="text-sm text-muted-foreground">Records saved</p>
+              </div>
+              <div className="rounded-lg border p-4">
+                <p className="text-2xl font-bold">{result.newPatients.length}</p>
+                <p className="text-sm text-muted-foreground">New patients added</p>
               </div>
               <div className="rounded-lg border p-4">
                 <p className="text-2xl font-bold">{result.unmatched.length}</p>
@@ -595,11 +733,21 @@ export default function VendorReportUpload() {
             )}
           </Card>
 
-          {result.matched.length > 0 && (
+          {result.newPatients.length > 0 && (
             <Card>
-              <CardHeader>
-                <CardTitle>Matched Patients</CardTitle>
-                <CardDescription>How each row was identified</CardDescription>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserPlus className="h-5 w-5 text-primary" />
+                    New Patients Added
+                  </CardTitle>
+                  <CardDescription>
+                    These Client IDs were not in the patient list, so the patients were created automatically
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => setShowNewPatients(true)}>
+                  View
+                </Button>
               </CardHeader>
               <CardContent>
                 <Table>
@@ -607,6 +755,40 @@ export default function VendorReportUpload() {
                     <TableRow>
                       <TableHead>Row</TableHead>
                       <TableHead>Patient</TableHead>
+                      <TableHead>K Number</TableHead>
+                      <TableHead>Client ID</TableHead>
+                      <TableHead>Vendor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {result.newPatients.map((p) => (
+                      <TableRow key={`new-${p.rowNumber}`}>
+                        <TableCell>{p.rowNumber}</TableCell>
+                        <TableCell className="font-medium">{p.name}</TableCell>
+                        <TableCell>{p.kNumber}</TableCell>
+                        <TableCell>{p.clientId || '—'}</TableCell>
+                        <TableCell>{p.vendorName}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {result.matched.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Processed Rows</CardTitle>
+                <CardDescription>How each row was identified and which vendor it was booked to</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Row</TableHead>
+                      <TableHead>Patient</TableHead>
+                      <TableHead>Vendor</TableHead>
                       <TableHead>Matched by</TableHead>
                       <TableHead>Client ID</TableHead>
                       <TableHead className="text-right">Grams</TableHead>
@@ -619,12 +801,23 @@ export default function VendorReportUpload() {
                       <TableRow key={m.rowNumber}>
                         <TableCell>{m.rowNumber}</TableCell>
                         <TableCell className="font-medium">{m.matchedPatient}</TableCell>
+                        <TableCell>{m.vendorName}</TableCell>
                         <TableCell>
-                          <Badge variant={m.matchedBy === 'name' ? 'outline' : 'secondary'}>
+                          <Badge
+                            variant={
+                              m.matchedBy === 'client_id'
+                                ? 'secondary'
+                                : m.matchedBy === 'created'
+                                ? 'default'
+                                : 'outline'
+                            }
+                          >
                             {m.matchedBy === 'client_id'
                               ? 'Client ID'
                               : m.matchedBy === 'k_number'
                               ? 'K Number'
+                              : m.matchedBy === 'created'
+                              ? 'New patient'
                               : 'Name'}
                           </Badge>
                         </TableCell>
@@ -649,7 +842,7 @@ export default function VendorReportUpload() {
                     Unmatched Rows
                   </CardTitle>
                   <CardDescription>
-                    These rows were not saved. Add the patient (or their Client ID / K Number) and re-upload.
+                    These rows were not saved. Fix the Client ID / K Number / Name and re-upload.
                   </CardDescription>
                 </div>
                 <Button variant="outline" onClick={downloadUnmatched}>
@@ -695,13 +888,13 @@ export default function VendorReportUpload() {
           <p>Supported columns (any order, at least one identifier required):</p>
           <ul className="list-disc list-inside space-y-1">
             <li>
-              <strong>Client ID</strong> — vendor-specific patient ID (best match)
+              <strong>Client ID</strong> — vendor-specific patient ID (used to detect the vendor automatically)
             </li>
             <li>
               <strong>K Number</strong> — clinic patient number
             </li>
             <li>
-              <strong>Patient Name</strong> — used only when Client ID / K Number are missing
+              <strong>Patient Name</strong> — used when Client ID / K Number are missing
             </li>
             <li>
               <strong>Quantity Grams</strong>, <strong>Net Sales</strong>, <strong>Our Fee</strong> (optional),
@@ -709,13 +902,56 @@ export default function VendorReportUpload() {
             </li>
           </ul>
           <p className="pt-2">
-            <strong>Matching order:</strong> Client ID for the selected vendor → K Number → Client ID from another
-            vendor → unique Patient Name. Matched Client IDs are saved against the patient–vendor link, so the next
-            month's report matches automatically. Re-uploading the same vendor &amp; month replaces the previous
-            batch — no duplicates in month-end reports.
+            <strong>Mixed vendors:</strong> one sheet can contain patients of several vendors. Each row's vendor is
+            derived from its Client ID link. Rows with a new or missing Client ID are booked to the selected
+            fallback vendor, and if the patient does not exist yet they are created automatically and listed above.
+          </p>
+          <p>
+            <strong>Re-uploads:</strong> only the vendors present in the file are replaced for the chosen month —
+            other vendors' data stays untouched, so month-end reports never double count.
           </p>
         </CardContent>
       </Card>
+
+      <Dialog open={showNewPatients} onOpenChange={setShowNewPatients}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="h-5 w-5" />
+              {result?.newPatients.length} new patient(s) added
+            </DialogTitle>
+            <DialogDescription>
+              These Client IDs were not found in the patient list, so the patients were created and added to the
+              sales report.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-80 overflow-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Patient</TableHead>
+                  <TableHead>K Number</TableHead>
+                  <TableHead>Client ID</TableHead>
+                  <TableHead>Vendor</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {(result?.newPatients || []).map((p) => (
+                  <TableRow key={`dlg-${p.rowNumber}`}>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell>{p.kNumber}</TableCell>
+                    <TableCell>{p.clientId || '—'}</TableCell>
+                    <TableCell>{p.vendorName}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setShowNewPatients(false)}>Got it</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
