@@ -644,6 +644,7 @@ export default function PatientDatabase() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => handleViewHistory(patient)} title="View Purchase History"><History className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Manage Vendors / Client IDs" onClick={() => { setVendorLinksPatient(patient); setIsVendorLinksOpen(true); }}><Link2 className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEditPatient(patient)}><Edit className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeletePatient(patient.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
