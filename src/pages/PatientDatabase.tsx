@@ -76,6 +76,8 @@ export default function PatientDatabase() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
+  const [isVendorLinksOpen, setIsVendorLinksOpen] = useState(false);
+  const [vendorLinksPatient, setVendorLinksPatient] = useState<Patient | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
