@@ -663,6 +663,15 @@ export default function PatientDatabase() {
         </CardContent>
       </Card>
 
+      <PatientVendorLinksDialog
+        open={isVendorLinksOpen}
+        onOpenChange={(o) => { setIsVendorLinksOpen(o); if (!o) setVendorLinksPatient(null); }}
+        patient={vendorLinksPatient}
+        onSaved={fetchPatientData}
+      />
+
+
+
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
