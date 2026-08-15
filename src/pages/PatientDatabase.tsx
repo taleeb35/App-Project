@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Search, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight, TrendingUp, History } from "lucide-react";
+import { Users, Search, Filter, Plus, Edit, Trash2, ChevronLeft, ChevronRight, TrendingUp, History, Link2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useClinic } from "@/contexts/ClinicContext";
 import { cn } from "@/lib/utils";
+import PatientVendorLinksDialog from "@/components/PatientVendorLinksDialog";
 
 type Patient = {
   id: string;
@@ -75,6 +76,8 @@ export default function PatientDatabase() {
   const [editingPatient, setEditingPatient] = useState<Patient | null>(null);
   const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
   const [historyPatient, setHistoryPatient] = useState<Patient | null>(null);
+  const [isVendorLinksOpen, setIsVendorLinksOpen] = useState(false);
+  const [vendorLinksPatient, setVendorLinksPatient] = useState<Patient | null>(null);
   const [purchaseHistory, setPurchaseHistory] = useState<any[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -641,6 +644,7 @@ export default function PatientDatabase() {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button variant="ghost" size="icon" onClick={() => handleViewHistory(patient)} title="View Purchase History"><History className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" title="Manage Vendors / Client IDs" onClick={() => { setVendorLinksPatient(patient); setIsVendorLinksOpen(true); }}><Link2 className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" onClick={() => handleEditPatient(patient)}><Edit className="h-4 w-4" /></Button>
                             <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => handleDeletePatient(patient.id)}><Trash2 className="h-4 w-4" /></Button>
                           </div>
@@ -658,6 +662,15 @@ export default function PatientDatabase() {
           )}
         </CardContent>
       </Card>
+
+      <PatientVendorLinksDialog
+        open={isVendorLinksOpen}
+        onOpenChange={(o) => { setIsVendorLinksOpen(o); if (!o) setVendorLinksPatient(null); }}
+        patient={vendorLinksPatient}
+        onSaved={fetchPatientData}
+      />
+
+
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="max-w-2xl">
