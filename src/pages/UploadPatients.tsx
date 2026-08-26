@@ -161,7 +161,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
           const map = normalizeRow(row as any);
 
           const fullNameRaw = (map['name'] ?? map['patientname'] ?? map['fullname'] ?? '') as string;
-          const hasFirstLast = map['firstname'] && map['lastname'];
+          const hasFirstLast = Boolean(map['firstname'] || map['lastname']);
           const kNumber = (map['knumber'] ?? map['kid'] ?? map['kno']) as string | undefined;
 
           if ((!fullNameRaw && !hasFirstLast) || !kNumber) {
@@ -185,6 +185,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
           if (checkError) throw checkError;
 
           let patientId: string | null = null;
+          let rowHasErrors = false;
 
           // Map prescription status to patient.status
           const rxStatusRaw = String(map['prescriptionstatus'] ?? map['status'] ?? 'active').toLowerCase();
@@ -205,17 +206,26 @@ const normalizeRow = (row: Record<string, unknown>) => {
             ? String(locationRoster).trim()
             : null;
 
+          const patientPayload = {
+            k_number: String(kNumber).trim(),
+            first_name: firstName,
+            last_name: lastName,
+            date_of_birth: dob,
+            phone,
+            email,
+            status: patientStatus,
+            patient_type: isVeteran ? 'Veteran' : 'Civilian',
+            location_roster: locationRosterVal,
+          } as any;
+
           if (existingPatients && existingPatients.length > 0) {
-            // Use existing patient; still process vendor mapping
+            // Use existing patient; update fields from the latest sheet and still process vendor mapping
             patientId = existingPatients[0].id;
-            // Update location/roster if provided
-            if (locationRosterVal) {
-              await (supabase as any)
-                .from('patients')
-                .update({ location_roster: locationRosterVal })
-                .eq('id', patientId);
-            }
-            skippedCount++;
+            const { error: updateError } = await (supabase as any)
+              .from('patients')
+              .update(patientPayload)
+              .eq('id', patientId);
+            if (updateError) throw updateError;
           } else {
             // Insert new patient
             const { data: newPatient, error: insertError } = await (supabase as any)
@@ -223,15 +233,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
               .insert([
                 {
                   clinic_id: selectedClinic.id,
-                  k_number: String(kNumber).trim(),
-                  first_name: firstName,
-                  last_name: lastName,
-                  date_of_birth: dob,
-                  phone,
-                  email,
-                  status: patientStatus,
-                  patient_type: isVeteran ? 'Veteran' : 'Civilian',
-                  location_roster: locationRosterVal,
+                  ...patientPayload,
                 } as any
               ])
 
@@ -239,7 +241,6 @@ const normalizeRow = (row: Record<string, unknown>) => {
               .single();
             if (insertError) throw insertError;
             patientId = newPatient.id;
-            addedCount++;
           }
 
           // Handle vendor associations + per-vendor Client IDs
@@ -252,7 +253,10 @@ const normalizeRow = (row: Record<string, unknown>) => {
                 selectedClinic.id,
                 pairs
               );
-              linkErrors.forEach((e) => errors.push(`Row ${rowNum}: ${e}`));
+              if (linkErrors.length > 0) {
+                rowHasErrors = true;
+                linkErrors.forEach((e) => errors.push(`Row ${rowNum}: ${e}`));
+              }
 
               if (vendorIds[0]) {
                 const { data: prefCheck } = await (supabase as any)
@@ -269,6 +273,9 @@ const normalizeRow = (row: Record<string, unknown>) => {
               }
             }
           }
+
+          if (rowHasErrors) skippedCount++;
+          else addedCount++;
 
         } catch (error: any) {
           errors.push(`Row ${rowNum}: ${error.message}`);
