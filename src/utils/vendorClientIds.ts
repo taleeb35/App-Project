@@ -5,8 +5,9 @@ export type VendorClientPair = { vendorName: string; clientId: string | null };
 type ExistingPatientLink = { id: string; client_id: string | null };
 
 const formatPatientLabel = (patient: any) => {
-  const fullName = [patient?.first_name, patient?.last_name].filter(Boolean).join(' ').trim();
-  const kNumber = patient?.k_number ? ` (${patient.k_number})` : '';
+  const patientRecord = Array.isArray(patient) ? patient[0] : patient;
+  const fullName = [patientRecord?.first_name, patientRecord?.last_name].filter(Boolean).join(' ').trim();
+  const kNumber = patientRecord?.k_number ? ` (${patientRecord.k_number})` : '';
   return `${fullName || 'another patient'}${kNumber}`;
 };
 
