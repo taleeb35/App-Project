@@ -41,8 +41,10 @@ export default function UploadPatients() {
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState<{
     total: number;
+    processed: number;
     added: number;
-    skipped: number;
+    updated: number;
+    failed: number;
     errors: string[];
   } | null>(null);
   const { toast } = useToast();
@@ -147,7 +149,8 @@ const normalizeRow = (row: Record<string, unknown>) => {
     resetVendorCache();
     const errors: string[] = [];
     let addedCount = 0;
-    let skippedCount = 0;
+    let updatedCount = 0;
+    let failedCount = 0;
 
     try {
       const rows = await parseExcelFile(file);
@@ -166,6 +169,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
 
           if ((!fullNameRaw && !hasFirstLast) || !kNumber) {
             errors.push(`Row ${rowNum}: Missing required fields (Name and K Number)`);
+            failedCount++;
             continue;
           }
 
@@ -186,6 +190,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
 
           let patientId: string | null = null;
           let rowHasErrors = false;
+          let wasExistingPatient = false;
 
           // Map prescription status to patient.status
           const rxStatusRaw = String(map['prescriptionstatus'] ?? map['status'] ?? 'active').toLowerCase();
@@ -220,6 +225,7 @@ const normalizeRow = (row: Record<string, unknown>) => {
 
           if (existingPatients && existingPatients.length > 0) {
             // Use existing patient; update fields from the latest sheet and still process vendor mapping
+            wasExistingPatient = true;
             patientId = existingPatients[0].id;
             const { error: updateError } = await (supabase as any)
               .from('patients')
@@ -274,11 +280,13 @@ const normalizeRow = (row: Record<string, unknown>) => {
             }
           }
 
-          if (rowHasErrors) skippedCount++;
+          if (rowHasErrors) failedCount++;
+          else if (wasExistingPatient) updatedCount++;
           else addedCount++;
 
         } catch (error: any) {
           errors.push(`Row ${rowNum}: ${error.message}`);
+          failedCount++;
         }
       }
 
@@ -286,14 +294,16 @@ const normalizeRow = (row: Record<string, unknown>) => {
 
       setResults({
         total: rows.length,
+        processed: addedCount + updatedCount,
         added: addedCount,
-        skipped: skippedCount,
+        updated: updatedCount,
+        failed: failedCount,
         errors,
       });
 
       toast({
         title: "Upload completed",
-        description: `Added ${addedCount} patients, skipped ${skippedCount} duplicates`,
+        description: `${addedCount} new patients added, ${updatedCount} existing patients updated${failedCount > 0 ? `, ${failedCount} failed` : ''}`,
       });
 
       setFile(null);
@@ -396,7 +406,8 @@ const normalizeRow = (row: Record<string, unknown>) => {
               <div className="space-y-2">
                 <p><strong>Total rows processed:</strong> {results.total}</p>
                 <p className="text-green-600"><strong>New patients added:</strong> {results.added}</p>
-                <p className="text-yellow-600"><strong>Duplicates skipped:</strong> {results.skipped}</p>
+                <p className="text-primary"><strong>Existing patients updated:</strong> {results.updated}</p>
+                <p className="text-destructive"><strong>Failed rows:</strong> {results.failed}</p>
                 
                 {results.errors.length > 0 && (
                   <div className="mt-4">

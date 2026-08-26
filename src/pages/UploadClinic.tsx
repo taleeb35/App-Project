@@ -33,6 +33,8 @@ export default function UploadClinic() {
   const [uploadResults, setUploadResults] = useState<{
     total: number;
     successful: number;
+    created: number;
+    updated: number;
     failed: number;
     errors: string[];
   } | null>(null);
@@ -101,6 +103,8 @@ export default function UploadClinic() {
     resetVendorCache();
     const errors: string[] = [];
     let successful = 0;
+    let created = 0;
+    let updated = 0;
     let failed = 0;
 
     try {
@@ -212,6 +216,7 @@ export default function UploadClinic() {
 
           let patientId: string | null = null;
           let rowHasErrors = false;
+          let wasExistingPatient = false;
 
           const patientPayload = {
             first_name: firstName,
@@ -227,6 +232,7 @@ export default function UploadClinic() {
           } as any;
 
           if (existingPatients && existingPatients.length > 0) {
+            wasExistingPatient = true;
             patientId = existingPatients[0].id;
             const { error: updateError } = await (supabase as any)
               .from('patients')
@@ -280,7 +286,11 @@ export default function UploadClinic() {
           }
 
           if (rowHasErrors) failed++;
-          else successful++;
+          else {
+            successful++;
+            if (wasExistingPatient) updated++;
+            else created++;
+          }
 
         } catch (error: any) {
           errors.push(`Row ${i + 2}: ${error.message}`);
@@ -291,6 +301,8 @@ export default function UploadClinic() {
       setUploadResults({
         total: rows.length,
         successful,
+        created,
+        updated,
         failed,
         errors: errors.slice(0, 10), // Show first 10 errors
       });
@@ -306,7 +318,7 @@ export default function UploadClinic() {
 
       toast({
         title: "Upload completed",
-        description: `Successfully imported ${successful} patients${failed > 0 ? ` (${failed} failed)` : ''}`,
+        description: `${created} new patients added, ${updated} existing patients updated${failed > 0 ? `, ${failed} failed` : ''}`,
       });
 
     } catch (error: any) {
@@ -414,7 +426,7 @@ export default function UploadClinic() {
 
           {uploadResults && (
             <div className="mt-6 space-y-4">
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Card>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm">Total Rows</CardTitle>
@@ -425,10 +437,18 @@ export default function UploadClinic() {
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-success">Successful</CardTitle>
+                    <CardTitle className="text-sm text-success">New Patients</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-2xl font-bold text-success">{uploadResults.successful}</p>
+                    <p className="text-2xl font-bold text-success">{uploadResults.created}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-primary">Updated Patients</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-2xl font-bold text-primary">{uploadResults.updated}</p>
                   </CardContent>
                 </Card>
                 <Card>
