@@ -156,7 +156,7 @@ export default function UploadClinic() {
           const rowNum = i + 2;
 
           const fullNameRaw = (map['name'] ?? map['patientname'] ?? map['fullname'] ?? '') as string;
-          const hasFirstLast = map['firstname'] && map['lastname'];
+          const hasFirstLast = Boolean(map['firstname'] || map['lastname']);
           const kNumber = (map['knumber'] ?? map['kid'] ?? map['kno']) as string | undefined;
 
           if (!fullNameRaw && !hasFirstLast) {
@@ -211,32 +211,36 @@ export default function UploadClinic() {
 
 
           let patientId: string | null = null;
+          let rowHasErrors = false;
+
+          const patientPayload = {
+            first_name: firstName,
+            last_name: lastName,
+            k_number: String(kNumber).trim(),
+            date_of_birth: dateOfBirth,
+            phone,
+            email,
+            prescription_status: rxStatusRaw,
+            status: patientStatus,
+            patient_type: isVeteran ? 'Veteran' : 'Civilian',
+            location_roster: locationRosterVal,
+          } as any;
 
           if (existingPatients && existingPatients.length > 0) {
             patientId = existingPatients[0].id;
-            if (locationRosterVal) {
-              await (supabase as any)
-                .from('patients')
-                .update({ location_roster: locationRosterVal })
-                .eq('id', patientId);
-            }
+            const { error: updateError } = await (supabase as any)
+              .from('patients')
+              .update(patientPayload)
+              .eq('id', patientId);
+            if (updateError) throw updateError;
           } else {
             // Insert new patient (set preferred vendor to first match when available)
             const { data: newPatient, error } = await (supabase as any)
               .from('patients')
               .insert({
                 clinic_id: selectedClinic.id,
-                first_name: firstName,
-                last_name: lastName,
-                k_number: String(kNumber).trim(),
-                date_of_birth: dateOfBirth,
-                phone,
-                email,
-                prescription_status: rxStatusRaw,
-                status: patientStatus,
-                patient_type: isVeteran ? 'Veteran' : 'Civilian',
+                ...patientPayload,
                 preferred_vendor_id: vendorIds[0] || null,
-                location_roster: locationRosterVal,
               } as any)
               .select('id')
               .single();
@@ -247,7 +251,6 @@ export default function UploadClinic() {
               continue;
             }
             patientId = newPatient.id;
-            successful++;
           }
 
           // Link vendors (with their per-vendor Client IDs) for new and existing patients
@@ -257,7 +260,10 @@ export default function UploadClinic() {
               selectedClinic.id,
               vendorPairs
             );
-            linkErrors.forEach((e) => errors.push(`Row ${i + 2}: ${e}`));
+            if (linkErrors.length > 0) {
+              rowHasErrors = true;
+              linkErrors.forEach((e) => errors.push(`Row ${rowNum}: ${e}`));
+            }
 
             // Ensure preferred vendor is set if missing
             const { data: prefCheck } = await (supabase as any)
@@ -272,6 +278,9 @@ export default function UploadClinic() {
                 .eq('id', patientId);
             }
           }
+
+          if (rowHasErrors) failed++;
+          else successful++;
 
         } catch (error: any) {
           errors.push(`Row ${i + 2}: ${error.message}`);

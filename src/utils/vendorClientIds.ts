@@ -2,6 +2,15 @@ import { supabase } from '@/integrations/supabase/client';
 
 export type VendorClientPair = { vendorName: string; clientId: string | null };
 
+type ExistingPatientLink = { id: string; client_id: string | null };
+
+const formatPatientLabel = (patient: any) => {
+  const patientRecord = Array.isArray(patient) ? patient[0] : patient;
+  const fullName = [patientRecord?.first_name, patientRecord?.last_name].filter(Boolean).join(' ').trim();
+  const kNumber = patientRecord?.k_number ? ` (${patientRecord.k_number})` : '';
+  return `${fullName || 'another patient'}${kNumber}`;
+};
+
 /**
  * Extracts vendor / client-id pairs from a normalized Excel row.
  * Supports any number of pairs: "Client ID 1"/"Vendor 1", "Client ID 2"/"Vendor 2", ...
@@ -51,7 +60,20 @@ export function extractVendorClientPairs(map: Record<string, unknown>): VendorCl
     }
   }
 
-  return pairs;
+  const deduped = new Map<string, VendorClientPair>();
+  pairs.forEach((pair) => {
+    const key = normalizeVendorName(pair.vendorName);
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, pair);
+      return;
+    }
+    if (!existing.clientId && pair.clientId) {
+      deduped.set(key, pair);
+    }
+  });
+
+  return Array.from(deduped.values());
 }
 
 /** Normalizes a vendor name for duplicate-safe comparison (case, spaces, punctuation, "inc"/"llc"). */
@@ -130,6 +152,29 @@ export async function resolveOrCreateVendor(clinicId: string, vendorName: string
   return created?.id ?? null;
 }
 
+async function findClientIdOwner(vendorId: string, clientId: string, patientId: string) {
+  const { data, error } = await (supabase as any)
+    .from('patient_vendors')
+    .select('id, patient_id, patients(first_name, last_name, k_number)')
+    .eq('vendor_id', vendorId)
+    .eq('client_id', clientId)
+    .neq('patient_id', patientId)
+    .maybeSingle();
+
+  if (error) return null;
+  return data || null;
+}
+
+async function insertVendorLink(patientId: string, vendorId: string, clientId: string | null) {
+  const { data, error } = await (supabase as any)
+    .from('patient_vendors')
+    .insert({ patient_id: patientId, vendor_id: vendorId, client_id: clientId })
+    .select('id, client_id')
+    .single();
+
+  return { data, error };
+}
+
 
 /**
  * Links a patient to the given vendors and stores the vendor-specific Client ID.
@@ -148,7 +193,7 @@ export async function syncPatientVendorLinks(
     .from('patient_vendors')
     .select('id, vendor_id, client_id')
     .eq('patient_id', patientId);
-  const existing = new Map<string, { id: string; client_id: string | null }>(
+  const existing = new Map<string, ExistingPatientLink>(
     (existingLinks || []).map((l: any) => [l.vendor_id, { id: l.id, client_id: l.client_id }])
   );
 
@@ -163,6 +208,14 @@ export async function syncPatientVendorLinks(
     const link = existing.get(vendorId);
     if (link) {
       if (pair.clientId && pair.clientId !== link.client_id) {
+        const owner = await findClientIdOwner(vendorId, pair.clientId, patientId);
+        if (owner) {
+          errors.push(
+            `Client ID "${pair.clientId}" for "${pair.vendorName}" already belongs to ${formatPatientLabel(owner.patients)}`
+          );
+          continue;
+        }
+
         const { error } = await (supabase as any)
           .from('patient_vendors')
           .update({ client_id: pair.clientId })
@@ -171,11 +224,21 @@ export async function syncPatientVendorLinks(
         else existing.set(vendorId, { id: link.id, client_id: pair.clientId });
       }
     } else {
-      const { data: inserted, error } = await (supabase as any)
-        .from('patient_vendors')
-        .insert({ patient_id: patientId, vendor_id: vendorId, client_id: pair.clientId })
-        .select('id')
-        .single();
+      if (pair.clientId) {
+        const owner = await findClientIdOwner(vendorId, pair.clientId, patientId);
+        if (owner) {
+          const { data: insertedWithoutClientId, error: insertWithoutClientIdError } = await insertVendorLink(patientId, vendorId, null);
+          if (!insertWithoutClientIdError && insertedWithoutClientId?.id) {
+            existing.set(vendorId, { id: insertedWithoutClientId.id, client_id: null });
+          }
+          errors.push(
+            `Linked "${pair.vendorName}" without Client ID because "${pair.clientId}" already belongs to ${formatPatientLabel(owner.patients)}`
+          );
+          continue;
+        }
+      }
+
+      const { data: inserted, error } = await insertVendorLink(patientId, vendorId, pair.clientId);
       if (error) errors.push(`Failed to link vendor "${pair.vendorName}" - ${error.message}`);
       else existing.set(vendorId, { id: inserted.id, client_id: pair.clientId });
     }
